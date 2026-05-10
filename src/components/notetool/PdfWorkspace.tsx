@@ -92,7 +92,7 @@ export function PdfWorkspace() {
       page.render({
         canvasContext: ctx,
         viewport,
-      }).promise.then(() => {
+      } as any).promise.then(() => {
         if (!cancelled) {
           renderingRef.current = false;
         }
@@ -199,10 +199,10 @@ export function PdfWorkspace() {
           onDragLeave={handleDragLeave}
           className={cn(
             'relative w-full max-w-xl rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-300 cursor-pointer',
-            'group hover:border-[#f0a500]/60 hover:bg-[#f0a500]/5',
+            'group hover:border-sb-accent/60 hover:bg-sb-accent/5',
             isDragging
-              ? 'border-[#f0a500] bg-[#f0a500]/10 scale-[1.02]'
-              : 'border-[#30363d] bg-[#0d1117]/50'
+              ? 'border-sb-accent bg-sb-accent/10 scale-[1.02]'
+              : 'border-sb-border bg-sb-bg/50'
           )}
           onClick={() => document.getElementById('pdf-upload-input')?.click()}
         >
@@ -220,18 +220,18 @@ export function PdfWorkspace() {
             className={cn(
               'mx-auto mb-6 h-20 w-20 rounded-2xl flex items-center justify-center transition-all duration-300',
               isDragging
-                ? 'bg-[#f0a500]/20 text-[#f0a500] scale-110'
-                : 'bg-[#1c2330] text-[#8b949e] group-hover:bg-[#f0a500]/10 group-hover:text-[#f0a500]'
+                ? 'bg-sb-accent/20 text-sb-accent scale-110'
+                : 'bg-sb-surface2 text-sb-muted group-hover:bg-sb-accent/10 group-hover:text-sb-accent'
             )}
           >
             <Upload className="h-10 w-10" />
           </div>
 
           {/* Text */}
-          <h3 className="text-lg font-semibold text-[#e6edf3] mb-2">
+          <h3 className="text-lg font-semibold text-sb-text mb-2">
             {isDragging ? 'Drop your PDF here' : 'Drop PDF here or click to upload'}
           </h3>
-          <p className="text-sm text-[#8b949e] mb-4">
+          <p className="text-sm text-sb-muted mb-4">
             Upload a medical PDF to extract and synthesize content
           </p>
 
@@ -239,7 +239,7 @@ export function PdfWorkspace() {
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <Badge
               variant="outline"
-              className="text-[10px] border-[#f0a500]/30 text-[#f0a500]"
+              className="text-[10px] border-sb-accent/30 text-sb-accent"
             >
               <Scissors className="h-3 w-3 mr-1" />
               Snippet Extraction
@@ -262,7 +262,7 @@ export function PdfWorkspace() {
 
           {/* Drag overlay glow */}
           {isDragging && (
-            <div className="absolute inset-0 rounded-2xl bg-[#f0a500]/5 pointer-events-none" />
+            <div className="absolute inset-0 rounded-2xl bg-sb-accent/5 pointer-events-none" />
           )}
         </div>
       </div>
@@ -275,17 +275,17 @@ export function PdfWorkspace() {
       {/* Main PDF viewer area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* PDF Toolbar */}
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b border-[#30363d]/60 bg-[#161b22]">
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b border-sb-border/60 bg-sb-surface">
           {/* Filename */}
-          <FileText className="h-3.5 w-3.5 text-[#f0a500] flex-shrink-0" />
-          <span className="text-xs font-medium text-[#e6edf3] truncate max-w-[200px]">
+          <FileText className="h-3.5 w-3.5 text-sb-accent flex-shrink-0" />
+          <span className="text-xs font-medium text-sb-text truncate max-w-[200px]">
             {pdfFile.name}
           </span>
-          <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e] ml-1">
+          <Badge variant="outline" className="text-[9px] border-sb-border text-sb-muted ml-1">
             {(pdfFile.size / 1024).toFixed(0)} KB
           </Badge>
 
-          <Separator orientation="vertical" className="h-5 bg-[#30363d] mx-1" />
+          <Separator orientation="vertical" className="h-5 bg-sb-border mx-1" />
 
           {/* Page navigation */}
           <div className="flex items-center gap-1">
@@ -294,7 +294,7 @@ export function PdfWorkspace() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+                  className="h-7 w-7 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
                   onClick={goToPrevPage}
                   disabled={pdfPageNum <= 1}
                 >
@@ -303,7 +303,7 @@ export function PdfWorkspace() {
               </TooltipTrigger>
               <TooltipContent>Previous Page</TooltipContent>
             </Tooltip>
-            <span className="text-xs text-[#8b949e] min-w-[60px] text-center">
+            <span className="text-xs text-sb-muted min-w-[60px] text-center">
               {pdfPageNum} / {numPages}
             </span>
             <Tooltip>
@@ -311,7 +311,7 @@ export function PdfWorkspace() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+                  className="h-7 w-7 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
                   onClick={goToNextPage}
                   disabled={pdfPageNum >= numPages}
                 >
@@ -322,7 +322,7 @@ export function PdfWorkspace() {
             </Tooltip>
           </div>
 
-          <Separator orientation="vertical" className="h-5 bg-[#30363d] mx-1" />
+          <Separator orientation="vertical" className="h-5 bg-sb-border mx-1" />
 
           {/* Zoom controls */}
           <div className="flex items-center gap-1">
@@ -331,7 +331,7 @@ export function PdfWorkspace() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+                  className="h-7 w-7 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
                   onClick={handleZoomOut}
                   disabled={zoom <= 25}
                 >
@@ -342,7 +342,7 @@ export function PdfWorkspace() {
             </Tooltip>
             <button
               onClick={handleZoomReset}
-              className="text-xs text-[#8b949e] hover:text-[#f0a500] min-w-[40px] text-center transition-colors"
+              className="text-xs text-sb-muted hover:text-sb-accent min-w-[40px] text-center transition-colors"
             >
               {zoom}%
             </button>
@@ -351,7 +351,7 @@ export function PdfWorkspace() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+                  className="h-7 w-7 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
                   onClick={handleZoomIn}
                   disabled={zoom >= 200}
                 >
@@ -362,7 +362,7 @@ export function PdfWorkspace() {
             </Tooltip>
           </div>
 
-          <Separator orientation="vertical" className="h-5 bg-[#30363d] mx-1" />
+          <Separator orientation="vertical" className="h-5 bg-sb-border mx-1" />
 
           {/* Snippet toggle */}
           <Tooltip>
@@ -373,8 +373,8 @@ export function PdfWorkspace() {
                 className={cn(
                   'h-7 w-7',
                   showSidePanel
-                    ? 'text-[#f0a500] bg-[#f0a500]/10'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                    ? 'text-sb-accent bg-sb-accent/10'
+                    : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
                 )}
                 onClick={() => setShowSidePanel(!showSidePanel)}
               >
@@ -395,7 +395,7 @@ export function PdfWorkspace() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-[#8b949e] hover:text-[#da3633] hover:bg-[#da3633]/10"
+                className="h-7 w-7 text-sb-muted hover:text-sb-wrong hover:bg-sb-wrong/10"
                 onClick={handleClose}
               >
                 <X className="h-3.5 w-3.5" />
@@ -406,7 +406,7 @@ export function PdfWorkspace() {
         </div>
 
         {/* PDF Canvas Renderer */}
-        <div className="flex-1 overflow-auto bg-[#0d1117] flex items-start justify-center p-4">
+        <div className="flex-1 overflow-auto bg-sb-bg flex items-start justify-center p-4">
           <div className="transition-transform duration-200">
             <canvas
               ref={canvasRef}
@@ -418,25 +418,25 @@ export function PdfWorkspace() {
 
       {/* ─── Side Panel: Snippet Extraction ─────────────────────────── */}
       {showSidePanel && (
-        <div className="w-72 flex-shrink-0 border-l border-[#30363d]/60 bg-[#0d1117] flex flex-col">
+        <div className="w-72 flex-shrink-0 border-l border-sb-border/60 bg-sb-bg flex flex-col">
           {/* Panel header */}
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#30363d]/60">
-            <Scissors className="h-3.5 w-3.5 text-[#f0a500]" />
-            <span className="text-xs font-semibold text-[#f0a500]">Snippets</span>
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-sb-border/60">
+            <Scissors className="h-3.5 w-3.5 text-sb-accent" />
+            <span className="text-xs font-semibold text-sb-accent">Snippets</span>
             <Badge
               variant="outline"
-              className="text-[9px] border-[#30363d] text-[#8b949e] ml-auto"
+              className="text-[9px] border-sb-border text-sb-muted ml-auto"
             >
               {snippets.length}
             </Badge>
           </div>
 
           {/* Add snippet button */}
-          <div className="px-3 py-2 border-b border-[#30363d]/40">
+          <div className="px-3 py-2 border-b border-sb-border/40">
             <Button
               variant="outline"
               size="sm"
-              className="w-full border-dashed border-[#30363d] text-[#8b949e] text-xs hover:text-[#f0a500] hover:border-[#f0a500]/30"
+              className="w-full border-dashed border-sb-border text-sb-muted text-xs hover:text-sb-accent hover:border-sb-accent/30"
               onClick={handleAddSnippet}
             >
               <Scissors className="h-3 w-3 mr-1.5" />
@@ -448,9 +448,9 @@ export function PdfWorkspace() {
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {snippets.length === 0 ? (
               <div className="text-center py-8">
-                <Scissors className="h-8 w-8 text-[#8b949e]/20 mx-auto mb-3" />
-                <p className="text-xs text-[#8b949e]/60">No snippets yet</p>
-                <p className="text-[10px] text-[#8b949e]/40 mt-1">
+                <Scissors className="h-8 w-8 text-sb-muted/20 mx-auto mb-3" />
+                <p className="text-xs text-sb-muted/60">No snippets yet</p>
+                <p className="text-[10px] text-sb-muted/40 mt-1">
                   Click the button above to extract text from the current page
                 </p>
               </div>
@@ -458,13 +458,13 @@ export function PdfWorkspace() {
               snippets.map((snippet) => (
                 <div
                   key={snippet.id}
-                  className="group relative rounded-lg border border-[#30363d]/60 bg-[#161b22] p-3 transition-all hover:border-[#f0a500]/30"
+                  className="group relative rounded-lg border border-sb-border/60 bg-sb-surface p-3 transition-all hover:border-sb-accent/30"
                 >
                   {/* Snippet header */}
                   <div className="flex items-center gap-1.5 mb-2">
                     <Badge
                       variant="outline"
-                      className="text-[9px] border-[#f0a500]/30 text-[#f0a500]"
+                      className="text-[9px] border-sb-accent/30 text-sb-accent"
                     >
                       p.{snippet.page}
                     </Badge>
@@ -475,13 +475,13 @@ export function PdfWorkspace() {
                     onChange={(e) =>
                       handleSnippetTextChange(snippet.id, e.target.value)
                     }
-                    className="w-full bg-transparent text-xs text-[#e6edf3]/80 resize-none border-none outline-none leading-relaxed min-h-[40px]"
+                    className="w-full bg-transparent text-xs text-sb-text/80 resize-none border-none outline-none leading-relaxed min-h-[40px]"
                     rows={2}
                   />
                   {/* Delete button */}
                   <button
                     onClick={() => handleRemoveSnippet(snippet.id)}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 rounded flex items-center justify-center text-[#8b949e] hover:text-[#da3633] hover:bg-[#da3633]/10"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 rounded flex items-center justify-center text-sb-muted hover:text-sb-wrong hover:bg-sb-wrong/10"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -492,11 +492,11 @@ export function PdfWorkspace() {
 
           {/* Panel footer */}
           {snippets.length > 0 && (
-            <div className="flex-shrink-0 px-3 py-2 border-t border-[#30363d]/60">
+            <div className="flex-shrink-0 px-3 py-2 border-t border-sb-border/60">
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full border-[#f0a500]/30 text-[#f0a500] text-xs hover:bg-[#f0a500]/10"
+                className="w-full border-sb-accent/30 text-sb-accent text-xs hover:bg-sb-accent/10"
                 onClick={() => {
                   // Copy all snippets as text
                   const text = snippets

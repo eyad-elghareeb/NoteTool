@@ -47,8 +47,9 @@ export interface DrawingPath {
 export interface NoteSection {
   id: string;
   title: string;
-  type: 'content' | 'mcq' | 'flashcard' | 'mermaid' | 'algorithm' | 'tabs' | 'asset';
+  type: 'content' | 'mcq' | 'flashcard' | 'mermaid' | 'algorithm' | 'tabs' | 'asset' | 'pdf-embed';
   content: unknown;
+  dynamic?: boolean; // true = user-added, shows remove button
 }
 
 export interface NoteData {
@@ -66,13 +67,6 @@ export interface NoteData {
   ddxComparison?: { feature: string; [key: string]: string }[];
   createdAt: number;
   updatedAt: number;
-}
-
-export interface DynamicSection {
-  id: string;
-  type: 'content' | 'mcq' | 'flashcard' | 'mermaid' | 'tabs' | 'asset';
-  title: string;
-  content: unknown;
 }
 
 export interface MCQAnswerState {
@@ -127,10 +121,6 @@ interface NoteToolState {
   activeView: ViewPanel;
   setActiveView: (view: ViewPanel) => void;
 
-  // Theme
-  isDark: boolean;
-  toggleTheme: () => void;
-
   // Sidebar
   sidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -147,6 +137,11 @@ interface NoteToolState {
   duplicateNote: (id: string) => void;
   activeNoteId: string;
   setActiveNoteId: (id: string) => void;
+
+  // ─── Per-note section CRUD ─────────────────────────────────────────
+  addSectionToNote: (noteId: string, section: NoteSection) => void;
+  removeSectionFromNote: (noteId: string, sectionId: string) => void;
+  updateSectionInNote: (noteId: string, sectionId: string, content: unknown) => void;
 
   // ─── Account / Profile ─────────────────────────────────────────────
   userProfile: UserProfile;
@@ -216,11 +211,6 @@ interface NoteToolState {
   removeDrawingPath: (id: string) => void;
   clearAllAnnotations: () => void;
 
-  // Dynamic note sections
-  dynamicSections: DynamicSection[];
-  addDynamicSection: (section: DynamicSection) => void;
-  removeDynamicSection: (id: string) => void;
-
   // MCQ answer states per question
   mcqAnswers: Record<string, MCQAnswerState>;
   setMCQAnswer: (id: string, state: Partial<MCQAnswerState>) => void;
@@ -247,6 +237,8 @@ interface NoteToolState {
   // ─── Fullscreen View ──────────────────────────────────────────────
   fullscreenView: 'none' | 'connectome' | 'mermaid' | 'mindmap';
   setFullscreenView: (view: 'none' | 'connectome' | 'mermaid' | 'mindmap') => void;
+  fullscreenMermaidCode: string;
+  setFullscreenMermaidCode: (code: string) => void;
 
   // ─── PDF Workspace ───────────────────────────────────────────────
   pdfFile: File | null;
@@ -272,10 +264,6 @@ export const useNoteToolStore = create<NoteToolState>()(
       activeView: 'home' as ViewPanel,
       setActiveView: (view) => set({ activeView: view }),
 
-      // Theme
-      isDark: true,
-      toggleTheme: () => set((s) => ({ isDark: !s.isDark })),
-
       // Sidebar
       sidebarOpen: true,
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -286,7 +274,11 @@ export const useNoteToolStore = create<NoteToolState>()(
 
       // ─── Notes CRUD ──────────────────────────────────────────────
       notes: [],
-      addNote: (note) => set((s) => ({ notes: [...s.notes, note] })),
+      addNote: (note) => set((s) => {
+        // Prevent duplicate IDs by filtering first
+        const otherNotes = s.notes.filter(n => n.id !== note.id);
+        return { notes: [...otherNotes, note] };
+      }),
       updateNote: (id, updates) =>
         set((s) => ({
           notes: s.notes.map((n) =>
@@ -294,10 +286,17 @@ export const useNoteToolStore = create<NoteToolState>()(
           ),
         })),
       deleteNote: (id) =>
-        set((s) => ({
-          notes: s.notes.filter((n) => n.id !== id),
-          activeNoteId: s.activeNoteId === id ? (s.notes[0]?.id || 'acute-heart-failure') : s.activeNoteId,
-        })),
+        set((s) => {
+          const remaining = s.notes.filter((n) => n.id !== id);
+          const nextId =
+            remaining.find((n) => n.id !== id)?.id ??
+            remaining[0]?.id ??
+            '';
+          return {
+            notes: remaining,
+            activeNoteId: s.activeNoteId === id ? nextId : s.activeNoteId,
+          };
+        }),
       duplicateNote: (id) => {
         const state = get();
         const original = state.notes.find((n) => n.id === id);
@@ -333,6 +332,42 @@ export const useNoteToolStore = create<NoteToolState>()(
           drawingPaths: s.annotationsPerNote[id]?.drawingPaths || [],
         }));
       },
+
+      // ─── Per-note section CRUD ───────────────────────────────────
+      addSectionToNote: (noteId, section) =>
+        set((s) => ({
+          notes: s.notes.map((n) =>
+            n.id === noteId
+              ? { ...n, sections: [...n.sections, section], updatedAt: Date.now() }
+              : n
+          ),
+        })),
+      removeSectionFromNote: (noteId, sectionId) =>
+        set((s) => ({
+          notes: s.notes.map((n) =>
+            n.id === noteId
+              ? {
+                  ...n,
+                  sections: n.sections.filter((sec) => sec.id !== sectionId),
+                  updatedAt: Date.now(),
+                }
+              : n
+          ),
+        })),
+      updateSectionInNote: (noteId, sectionId, content) =>
+        set((s) => ({
+          notes: s.notes.map((n) =>
+            n.id === noteId
+              ? {
+                  ...n,
+                  sections: n.sections.map((sec) =>
+                    sec.id === sectionId ? { ...sec, content } : sec
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : n
+          ),
+        })),
 
       // ─── Account / Profile ────────────────────────────────────────
       userProfile: {
@@ -413,9 +448,9 @@ export const useNoteToolStore = create<NoteToolState>()(
       setGlobalPenActive: (active) => set({ globalPenActive: active }),
       globalPenTool: 'pen' as GlobalPenTool,
       setGlobalPenTool: (tool) => set({ globalPenTool: tool }),
-      highlightColor: '#f0a500',
+      highlightColor: 'var(--color-sb-accent)',
       setHighlightColor: (color) => set({ highlightColor: color }),
-      drawingColor: '#f0a500',
+      drawingColor: 'var(--color-sb-accent)',
       setDrawingColor: (color) => set({ drawingColor: color }),
       drawingBrushSize: 3,
       setDrawingBrushSize: (size) => set({ drawingBrushSize: size }),
@@ -453,22 +488,17 @@ export const useNoteToolStore = create<NoteToolState>()(
           drawingPaths: [],
         }),
 
-      // Dynamic sections
-      dynamicSections: [],
-      addDynamicSection: (section) =>
-        set((s) => ({ dynamicSections: [...s.dynamicSections, section] })),
-      removeDynamicSection: (id) =>
-        set((s) => ({
-          dynamicSections: s.dynamicSections.filter((sec) => sec.id !== id),
-        })),
-
-      // MCQ answers
+      // MCQ answers — fixed: spread existing state before partial update
       mcqAnswers: {},
       setMCQAnswer: (id, answerState) =>
         set((s) => ({
           mcqAnswers: {
             ...s.mcqAnswers,
-            [id]: { selected: null, revealed: false, flagged: false, ...answerState },
+            [id]: Object.assign(
+              { selected: null, revealed: false, flagged: false },
+              s.mcqAnswers[id] || {},
+              answerState
+            ),
           },
         })),
       resetMCQAnswer: (id) =>
@@ -506,6 +536,8 @@ export const useNoteToolStore = create<NoteToolState>()(
       // ─── Fullscreen View ─────────────────────────────────────────
       fullscreenView: 'none' as const,
       setFullscreenView: (view) => set({ fullscreenView: view }),
+      fullscreenMermaidCode: '',
+      setFullscreenMermaidCode: (code) => set({ fullscreenMermaidCode: code }),
 
       // ─── PDF Workspace ──────────────────────────────────────────
       pdfFile: null,
@@ -518,16 +550,13 @@ export const useNoteToolStore = create<NoteToolState>()(
       setSearchOpen: (open) => set({ searchOpen: open }),
     }),
     {
-      name: 'notetool-storage',
-      // Only persist certain fields
+      name: 'notetool-storage-v2', // bumped version to clear stale dynamicSections
       partialize: (state) => ({
         notes: state.notes,
         userProfile: state.userProfile,
         settings: state.settings,
         activeNoteId: state.activeNoteId,
         annotationsPerNote: state.annotationsPerNote,
-        dynamicSections: state.dynamicSections,
-        isDark: state.isDark,
         sidebarOpen: state.sidebarOpen,
         mcqAnswers: state.mcqAnswers,
         flashcardStates: state.flashcardStates,

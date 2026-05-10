@@ -825,14 +825,14 @@ export function ConnectomeView({ centerNode, links }: ConnectomeViewProps) {
 
   const svgHeight = isFullscreen ? '100%' : '400px';
   const svgClass = isFullscreen
-    ? 'w-full h-full bg-[#0d1117]'
+    ? 'w-full h-full bg-sb-bg'
     : 'w-full rounded-lg bg-slate-950/50 border border-border/20';
 
   const content = (
     <div
       ref={containerRef}
       className={`relative ${isFullscreen ? 'h-full w-full' : ''}`}
-      style={isFullscreen ? { background: '#0d1117' } : undefined}
+      style={isFullscreen ? { background: 'var(--color-sb-bg)' } : undefined}
     >
       {/* ─── Header (non-fullscreen) ──────────────────────────── */}
       {!isFullscreen && (
@@ -893,7 +893,7 @@ export function ConnectomeView({ centerNode, links }: ConnectomeViewProps) {
 
       {/* ─── Fullscreen Header ────────────────────────────────── */}
       {isFullscreen && (
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-[#0d1117] to-transparent">
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-[var(--color-sb-bg)] to-transparent">
           <div className="flex items-center gap-2">
             <Network className="h-5 w-5 text-violet-400" />
             <h2 className="text-base font-semibold text-violet-400">
@@ -1120,7 +1120,7 @@ export function ConnectomeView({ centerNode, links }: ConnectomeViewProps) {
 
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0d1117] flex flex-col">
+      <div className="fixed inset-0 z-50 bg-sb-bg flex flex-col">
         {content}
       </div>
     );

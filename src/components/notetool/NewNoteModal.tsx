@@ -92,10 +92,10 @@ export function NewNoteModal() {
 
   return (
     <Dialog open={newNoteModalOpen} onOpenChange={setNewNoteModalOpen}>
-      <DialogContent className="bg-[#161b22] border-[#30363d] text-[#e6edf3] max-w-lg">
+      <DialogContent className="bg-sb-surface border-sb-border text-sb-text max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-[#e6edf3] flex items-center gap-2 serif-title text-lg">
-            <Sparkles className="h-5 w-5 text-[#f0a500]" />
+          <DialogTitle className="text-sb-text flex items-center gap-2 serif-title text-lg">
+            <Sparkles className="h-5 w-5 text-sb-accent" />
             Create New Synthesis
           </DialogTitle>
         </DialogHeader>
@@ -103,25 +103,25 @@ export function NewNoteModal() {
         <div className="space-y-4 py-2">
           {/* Title */}
           <div className="space-y-2">
-            <Label className="text-[#8b949e] text-xs">Title</Label>
+            <Label className="text-sb-muted text-xs">Title</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Acute Heart Failure Management"
-              className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] text-base rounded-xl h-11 placeholder:text-[#8b949e]/50"
+              className="bg-sb-bg border-sb-border text-sb-text text-base rounded-xl h-11 placeholder:text-sb-muted/50"
             />
           </div>
 
           {/* Specialty */}
           <div className="space-y-2">
-            <Label className="text-[#8b949e] text-xs">Specialty</Label>
+            <Label className="text-sb-muted text-xs">Specialty</Label>
             <Select value={specialty} onValueChange={setSpecialty}>
-              <SelectTrigger className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] rounded-xl">
+              <SelectTrigger className="bg-sb-bg border-sb-border text-sb-text rounded-xl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#161b22] border-[#30363d]">
+              <SelectContent className="bg-sb-surface border-sb-border">
                 {SPECIALTIES.map((s) => (
-                  <SelectItem key={s} value={s} className="text-[#e6edf3] focus:bg-[#1c2330] focus:text-[#f0a500]">
+                  <SelectItem key={s} value={s} className="text-sb-text focus:bg-sb-surface2 focus:text-sb-accent">
                     {s}
                   </SelectItem>
                 ))}
@@ -131,38 +131,38 @@ export function NewNoteModal() {
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label className="text-[#8b949e] text-xs">Tags (comma separated)</Label>
+            <Label className="text-sb-muted text-xs">Tags (comma separated)</Label>
             <Input
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="e.g., emergency, pharmacology, acute-care"
-              className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] rounded-xl placeholder:text-[#8b949e]/50"
+              className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
             />
           </div>
 
           {/* Initial Content */}
           <div className="space-y-2">
-            <Label className="text-[#8b949e] text-xs">Initial Content (Markdown)</Label>
+            <Label className="text-sb-muted text-xs">Initial Content (Markdown)</Label>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Start writing your synthesis content here..."
               rows={5}
-              className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] rounded-xl font-mono text-xs placeholder:text-[#8b949e]/50"
+              className="bg-sb-bg border-sb-border text-sb-text rounded-xl font-mono text-xs placeholder:text-sb-muted/50"
             />
           </div>
         </div>
 
         <DialogFooter className="gap-2">
           <DialogClose asChild>
-            <Button variant="ghost" className="text-[#8b949e] rounded-xl">
+            <Button variant="ghost" className="text-sb-muted rounded-xl">
               Cancel
             </Button>
           </DialogClose>
           <Button
             onClick={handleCreate}
             disabled={!title.trim()}
-            className="bg-[#f0a500] hover:bg-[#d4940a] text-[#0d1117] font-semibold rounded-xl"
+            className="bg-sb-accent hover:bg-[#d4940a] text-sb-bg font-semibold rounded-xl"
           >
             <Plus className="h-4 w-4 mr-1.5" />
             Create Synthesis

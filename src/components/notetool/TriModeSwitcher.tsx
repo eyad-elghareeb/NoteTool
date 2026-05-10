@@ -15,7 +15,7 @@ export function TriModeSwitcher() {
   const { mode, setMode } = useNoteToolStore();
 
   return (
-    <div className="flex items-center rounded-full bg-[#1c2330]/50 p-1 border border-[#30363d]/50">
+    <div className="flex items-center rounded-full bg-sb-surface2/50 p-1 border border-sb-border/50">
       {modes.map((m) => (
         <button
           key={m.id}
@@ -23,14 +23,14 @@ export function TriModeSwitcher() {
           className={cn(
             'relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-semibold tracking-widest transition-all duration-200',
             mode === m.id
-              ? 'text-[#0d1117]'
-              : 'text-[#8b949e] hover:text-[#e6edf3]'
+              ? 'text-sb-bg'
+              : 'text-sb-muted hover:text-sb-text'
           )}
         >
           {mode === m.id && (
             <motion.div
               layoutId="activeMode"
-              className="absolute inset-0 rounded-full bg-[#f0a500] shadow-lg shadow-[#f0a500]/25"
+              className="absolute inset-0 rounded-full bg-sb-accent shadow-lg shadow-[var(--color-sb-accent)]/25"
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             />
           )}

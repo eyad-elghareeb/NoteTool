@@ -81,18 +81,18 @@ export function StatusBar() {
             className={cn(
               'fixed bottom-0 left-0 right-0 z-50',
               'h-[28px] flex items-center px-4 gap-3',
-              'bg-[#0d1117]/70 backdrop-blur-md border-t border-[#30363d]/40',
+              'bg-sb-bg/70 backdrop-blur-md border-t border-sb-border/40',
               'select-none'
             )}
           >
             {/* Green dot + Online */}
             <div className="flex items-center gap-1.5">
-              <div className="w-[5px] h-[5px] rounded-full bg-[#2ea043] animate-pulse" />
-              <span className="text-[9px] font-medium text-[#8b949e] tracking-wide">Online</span>
+              <div className="w-[5px] h-[5px] rounded-full bg-sb-correct animate-pulse" />
+              <span className="text-[9px] font-medium text-sb-muted tracking-wide">Online</span>
             </div>
 
             {/* Separator */}
-            <div className="w-px h-2.5 bg-[#30363d]/60" />
+            <div className="w-px h-2.5 bg-sb-border/60" />
 
             {/* Specialty */}
             <span className="text-[9px] text-[#484f58]">
@@ -100,12 +100,12 @@ export function StatusBar() {
             </span>
 
             {/* Separator */}
-            <div className="w-px h-2.5 bg-[#30363d]/60" />
+            <div className="w-px h-2.5 bg-sb-border/60" />
 
             {/* Links */}
             <button
               onClick={() => setActiveView('connectome')}
-              className="flex items-center gap-1 text-[#484f58] hover:text-[#f0a500] transition-colors"
+              className="flex items-center gap-1 text-[#484f58] hover:text-sb-accent transition-colors"
             >
               <span className="text-[9px]">{linkCount} links</span>
             </button>

@@ -25,15 +25,15 @@ export function DissectionView({ highYieldSummary, children }: DissectionViewPro
           className={cn(
             'flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 border',
             dissectionMode
-              ? 'bg-[#f0a500] text-[#0d1117] border-[#f0a500] shadow-lg shadow-[#f0a500]/20'
-              : 'bg-[#1c2330]/50 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:border-[#8b949e]'
+              ? 'bg-sb-accent text-sb-bg border-sb-accent shadow-lg shadow-[var(--color-sb-accent)]/20'
+              : 'bg-sb-surface2/50 text-sb-muted border-sb-border hover:text-sb-text hover:border-sb-muted'
           )}
         >
           <Maximize2 className="h-3.5 w-3.5" />
           {dissectionMode ? 'Dissection Mode' : 'Dissect Note'}
         </button>
         {dissectionMode && (
-          <Badge variant="outline" className="text-[10px] border-[#f0a500]/30 text-[#f0a500] bg-[#f0a500]/8">
+          <Badge variant="outline" className="text-[10px] border-sb-accent/30 text-sb-accent bg-sb-accent/8">
             <Zap className="h-3 w-3 mr-1" />
             High-Yield Summary
           </Badge>
@@ -50,15 +50,15 @@ export function DissectionView({ highYieldSummary, children }: DissectionViewPro
             className="space-y-4"
           >
             {/* High-Yield Summary Card */}
-            <div className="rounded-2xl border border-[#f0a500]/20 bg-[#f0a500]/5 p-5 space-y-3">
+            <div className="rounded-2xl border border-sb-accent/20 bg-sb-accent/5 p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-[#f0a500]" />
-                  <h3 className="text-sm font-bold text-[#f0a500]">High-Yield Summary</h3>
+                  <Zap className="h-4 w-4 text-sb-accent" />
+                  <h3 className="text-sm font-bold text-sb-accent">High-Yield Summary</h3>
                 </div>
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="text-[10px] text-[#8b949e] hover:text-[#f0a500] flex items-center gap-1 transition-colors"
+                  className="text-[10px] text-sb-muted hover:text-sb-accent flex items-center gap-1 transition-colors"
                 >
                   {expanded ? (
                     <>
@@ -77,10 +77,10 @@ export function DissectionView({ highYieldSummary, children }: DissectionViewPro
               <ul className="space-y-2">
                 {highYieldSummary.map((point, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#f0a500]/15 text-[#f0a500] flex items-center justify-center text-[10px] font-mono mt-0.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sb-accent/15 text-sb-accent flex items-center justify-center text-[10px] font-mono mt-0.5">
                       {i + 1}
                     </span>
-                    <span className="text-[#e6edf3]/90 leading-relaxed">{point}</span>
+                    <span className="text-sb-text/90 leading-relaxed">{point}</span>
                   </li>
                 ))}
               </ul>

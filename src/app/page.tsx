@@ -51,7 +51,19 @@ import {
   FileUp,
   ChevronDown,
   Command,
+  Sun,
+  Moon,
+  Pencil,
+  Check,
+  Code2,
 } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,8 +83,6 @@ export default function Home() {
     activeView,
     activeNoteId,
     dissectionMode,
-    dynamicSections,
-    removeDynamicSection,
     contentToolbarOpen,
     setContentToolbarOpen,
     notes,
@@ -84,7 +94,7 @@ export default function Home() {
     duplicateNote,
     deleteNote,
     settings,
-    // ─── New store fields ────────────────────────────
+    updateSettings,
     globalPenActive,
     setGlobalPenActive,
     searchOpen,
@@ -93,30 +103,43 @@ export default function Home() {
     setSearchQuery,
     fullscreenView,
     setFullscreenView,
+    fullscreenMermaidCode,
     pdfFile,
     setPdfFile,
+    removeSectionFromNote,
+    updateSectionInNote,
   } = store;
 
-  // ─── Seed demo notes on first load ──────────────────────────────────
+  const isDark = settings.theme === 'dark';
+
+  // ─── Seed demo notes on first load ---
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
+    // Deduplicate existing notes if any (fallback for legacy duplicates)
+    const uniqueNotes = notes.filter((n, i) => notes.findIndex(m => m.id === n.id) === i);
+    if (uniqueNotes.length !== notes.length) {
+      // We found duplicates, let's clean them up (this is a bit hacky but safe)
+      // Since we can't easily bulk update, we just rely on addNote's new filter logic
+      // if we were to re-seed, but here we just need to wait for seeded check.
+    }
+
     if (!seeded && notes.length === 0) {
       DEMO_NOTES.forEach((n) => addNote(n));
       queueMicrotask(() => setSeeded(true));
     }
-  }, [seeded, notes.length, addNote]);
+  }, [seeded, notes, addNote]);
 
-  // ─── When switching to annotate mode, activate global pen ───────────
+  // ─── When switching to annotate mode, activate global pen ---
   useEffect(() => {
     if (mode === 'annotate') {
       setGlobalPenActive(true);
     }
   }, [mode, setGlobalPenActive]);
 
-  // ─── Get the active note ────────────────────────────────────────────
+  // ─── Get the active note ---
   const activeNote = notes.find((n) => n.id === activeNoteId) || acuteHeartFailureNote;
 
-  // ─── Export logic ───────────────────────────────────────────────────
+  // ─── Export logic ---
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -139,7 +162,7 @@ export default function Home() {
             `<section><h2>${s.title}</h2><div>${typeof s.content === 'string' ? s.content : JSON.stringify(s.content)}</div></section>`
         )
         .join('\n');
-      content = `<!DOCTYPE html><html><head><title>${note.title}</title><style>body{font-family:system-ui;max-width:800px;margin:40px auto;padding:0 20px;color:#e6edf3;background:#0d1117;}h1{font-family:Georgia,serif;}h2{color:#f0a500;}</style></head><body><h1>${note.title}</h1><p><em>${note.specialty}</em></p>${sectionsHtml}</body></html>`;
+      content = `<!DOCTYPE html><html><head><title>${note.title}</title><style>body{font-family:system-ui;max-width:800px;margin:40px auto;padding:0 20px;color:var(--color-sb-text);background:var(--color-sb-bg);}h1{font-family:Georgia,serif;}h2{color:var(--color-sb-accent);}</style></head><body><h1>${note.title}</h1><p><em>${note.specialty}</em></p>${sectionsHtml}</body></html>`;
       filename = `${note.id}.html`;
       mimeType = 'text/html';
     }
@@ -154,44 +177,50 @@ export default function Home() {
     setExportDropdownOpen(false);
   };
 
-  // ─── Export PDF ─────────────────────────────────────────────────────
+  // ─── Export PDF — capture live rendered DOM ---
   const handleExportPDF = async () => {
     const note = activeNote;
     if (!note) return;
-
-    // Create a temporary container with styled content
-    const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;padding:40px;background:#0d1117;color:#e6edf3;font-family:system-ui;';
-
-    // Build HTML content from note
-    container.innerHTML = `<h1 style="color:#f0a500;font-size:24px;margin-bottom:8px;">${note.title}</h1>
-      <p style="color:#8b949e;font-size:14px;margin-bottom:20px;">${note.specialty} • ${note.category}</p>
-      <hr style="border-color:#30363d;margin-bottom:20px;"/>
-      ${note.sections.map(s => {
-        if (s.type === 'content') return `<h2 style="color:#f0a500;font-size:18px;margin:20px 0 10px;">${s.title}</h2><div style="color:#e6edf3;font-size:14px;line-height:1.6;">${typeof s.content === 'string' ? s.content : ''}</div>`;
-        return '';
-      }).join('')}
-      <div style="margin-top:30px;padding-top:10px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">Exported from SurgicalBrain NoteTool</div>`;
-
-    document.body.appendChild(container);
-
+    const bgColor = isDark ? 'var(--color-sb-bg)' : '#f3f0eb';
+    // Capture the live rendered DOM — includes all section types
+    const printRoot = document.getElementById('note-print-root') ?? document.body;
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
-      const canvas = await html2canvas(container, { backgroundColor: '#0d1117', scale: 2 });
+      const canvas = await html2canvas(printRoot, {
+        backgroundColor: bgColor,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
       const jsPDF = (await import('jspdf')).default;
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pageW) / canvas.width;
+      let yPos = 0;
+      let remaining = imgH;
+      let first = true;
+      while (remaining > 0) {
+        if (!first) pdf.addPage();
+        first = false;
+        const sliceH = Math.min(remaining, pageH);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = Math.round((sliceH * canvas.width) / pageW);
+        const ctx = sliceCanvas.getContext('2d');
+        ctx?.drawImage(canvas, 0, Math.round((yPos * canvas.width) / pageW), canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, sliceH);
+        yPos += sliceH;
+        remaining -= sliceH;
+      }
       pdf.save(`${note.id}.pdf`);
-    } finally {
-      document.body.removeChild(container);
+    } catch (err) {
+      console.error('PDF export error:', err);
     }
     setExportDropdownOpen(false);
   };
 
-  // ─── Export Anki ────────────────────────────────────────────────────
+  // ─── Export Anki ---
   const handleExportAnki = () => {
     const note = activeNote;
     if (!note) return;
@@ -259,7 +288,7 @@ export default function Home() {
     }
   }, [exportDropdownOpen]);
 
-  // ─── Command Palette (Cmd+K) ────────────────────────────────────────
+  // ─── Command Palette (Cmd+K) ---
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
 
@@ -322,7 +351,7 @@ export default function Home() {
     }
   };
 
-  // ─── PDF Workspace ──────────────────────────────────────────────────
+  // ─── PDF Workspace ---
   const [pdfDragOver, setPdfDragOver] = useState(false);
   const [pdfIframeUrl, setPdfIframeUrl] = useState<string | null>(null);
 
@@ -355,90 +384,97 @@ export default function Home() {
     [handlePdfUpload]
   );
 
-  // ─── Mindmap markdown content ───────────────────────────────────────
-  const mindmapMarkdown = `# Acute Heart Failure
-## Pathophysiology
-### Systolic Dysfunction
-### Diastolic Dysfunction
-### Volume Overload
-## Clinical Features
-### Left-sided HF
-### Right-sided HF
-### Killip Classification
-## Management
-### Acute (LMNOP)
-#### IV Furosemide
-#### IV GTN
-#### O2
-### Post-stabilization
-#### ACEi/ARB
-#### Beta-blockers
-#### MRA (Spironolactone)
-## Investigations
-### BNP/NT-proBNP
-### Echocardiography
-### Chest X-ray
-### ECG
-## DDx
-### COPD
-### PE
-### Pneumonia`;
+  // ─── Mindmap markdown — dynamically from active note ---
+  const mindmapMarkdown = activeNote
+    ? `# ${activeNote.title}\n` +
+      activeNote.sections.map((s) => `## ${s.title}`).join('\n')
+    : '# No note selected';
 
-  // ─── Developer view raw content ─────────────────────────────────────
+  // ─── Developer view raw content ---
   const devHtmlContent = `<div class="note-section">
-  <h2 style="color: #f0a500; border-bottom: 2px solid #f0a500; padding-bottom: 8px;">
+  <h2 style="color: var(--color-sb-accent); border-bottom: 2px solid var(--color-sb-accent); padding-bottom: 8px;">
     Acute Heart Failure — Custom Interactive View
   </h2>
-  <div style="background: #1c2330; padding: 16px; border-radius: 12px; margin: 12px 0;">
-    <p style="color: #8b949e;">This is the <strong style="color: #f0a500;">Developer/Edit Mode</strong>.</p>
-    <p style="color: #8b949e;">Edit the HTML/JS on the left panel → see live preview on the right.</p>
+  <div style="background: var(--color-sb-surface2); padding: 16px; border-radius: 12px; margin: 12px 0;">
+    <p style="color: var(--color-sb-muted);">This is the <strong style="color: var(--color-sb-accent);">Developer/Edit Mode</strong>.</p>
+    <p style="color: var(--color-sb-muted);">Edit the HTML/JS on the left panel → see live preview on the right.</p>
   </div>
   <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
-    <tr style="background: #222a36;">
-      <th style="padding: 8px; text-align: left; color: #f0a500; border: 1px solid #30363d;">Parameter</th>
-      <th style="padding: 8px; text-align: left; color: #f0a500; border: 1px solid #30363d;">Value</th>
+    <tr style="background: var(--color-sb-surface3);">
+      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Parameter</th>
+      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Value</th>
     </tr>
     <tr>
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Killip Class</td>
-      <td style="padding: 8px; color: #f0a500; border: 1px solid #30363d;">II</td>
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Killip Class</td>
+      <td style="padding: 8px; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">II</td>
     </tr>
-    <tr style="background: #1c2330;">
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">BNP</td>
-      <td style="padding: 8px; color: #f0a500; border: 1px solid #30363d;">820 pg/mL</td>
+    <tr style="background: var(--color-sb-surface2);">
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">BNP</td>
+      <td style="padding: 8px; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">820 pg/mL</td>
     </tr>
   </table>
 </div>`;
 
-  // ─── Render a section ───────────────────────────────────────────────
+  // ─── Inline editing state ---
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+
+  const startEdit = (id: string, content: string) => {
+    setEditingId(id);
+    setEditingText(content);
+  };
+
+  const saveEdit = (sectionId: string) => {
+    updateSectionInNote(activeNoteId, sectionId, editingText);
+    setEditingId(null);
+  };
+
+  // ─── Render a section ---
   const renderSection = (
-    section: { id: string; title?: string; type: string; content: unknown },
-    isDynamic = false
+    section: { id: string; title?: string; type: string; content: unknown; dynamic?: boolean }
   ) => {
+    const isRemovable = section.dynamic === true;
     switch (section.type) {
       case 'content':
         return (
           <div key={section.id} className="space-y-2 relative group">
-            <h2 className="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
-              <div className="w-1 h-5 bg-[#f0a500] rounded-full" />
+            <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-sb-text)' }}>
+              <div className="w-1 h-5 rounded-full" style={{ background: 'var(--color-sb-accent)' }} />
               {section.title}
             </h2>
-            <div
-              className="pl-3 prose prose-sm max-w-none text-[#e6edf3]/85"
-              style={{ fontSize: `${settings.fontSize}px` }}
-            >
-              <ReactMarkdown>
-                {typeof section.content === 'string' ? section.content : ''}
-              </ReactMarkdown>
-            </div>
-            {isDynamic && (
-              <button
-                onClick={() => removeDynamicSection(section.id)}
-                className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md bg-[#da3633]/10 text-[#da3633] hover:bg-[#da3633]/20"
-                title="Remove section"
+            {editingId === section.id ? (
+              <div className="pl-3 space-y-2">
+                <textarea
+                  autoFocus
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-lg border p-3 font-mono text-xs resize-y"
+                  style={{ background: 'var(--color-sb-surface2)', borderColor: 'var(--color-sb-border)', color: 'var(--color-sb-text)' }}
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => saveEdit(section.id)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--color-sb-accent)', color: isDark ? 'var(--color-sb-bg)' : '#fff' }}>
+                    <Check className="h-3 w-3" />Save
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--color-sb-surface2)', color: 'var(--color-sb-muted)' }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="pl-3 prose prose-sm max-w-none"
+                style={{ fontSize: `${settings.fontSize}px`, color: 'var(--color-sb-text)' }}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
+                <ReactMarkdown>{typeof section.content === 'string' ? section.content : ''}</ReactMarkdown>
+              </div>
             )}
+            <div className="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {mode !== 'read' && editingId !== section.id && (
+                <button onClick={() => startEdit(section.id, typeof section.content === 'string' ? section.content : '')} className="p-1 rounded-md" style={{ background: 'var(--color-sb-accent-dim)', color: 'var(--color-sb-accent)' }} title="Edit section"><Pencil className="h-3.5 w-3.5" /></button>
+              )}
+              {isRemovable && (
+                <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="p-1 rounded-md" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove section"><X className="h-3.5 w-3.5" /></button>
+              )}
+            </div>
           </div>
         );
 
@@ -447,8 +483,8 @@ export default function Home() {
         return (
           <div key={section.id} className="space-y-2 relative group">
             {section.title && (
-              <h2 className="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
-                <div className="w-1 h-5 bg-[#f0a500] rounded-full" />
+              <h2 className="text-lg font-bold text-sb-text flex items-center gap-2">
+                <div className="w-1 h-5 bg-sb-accent rounded-full" />
                 {section.title}
               </h2>
             )}
@@ -461,14 +497,8 @@ export default function Home() {
                   code={(section.content as { code: string }).code}
                 />
               )}
-            {isDynamic && (
-              <button
-                onClick={() => removeDynamicSection(section.id)}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md bg-[#da3633]/10 text-[#da3633] hover:bg-[#da3633]/20 z-10"
-                title="Remove section"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            {isRemovable && (
+              <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md z-10" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove section"><X className="h-3.5 w-3.5" /></button>
             )}
           </div>
         );
@@ -476,8 +506,8 @@ export default function Home() {
       case 'tabs':
         return (
           <div key={section.id} className="space-y-2 relative group">
-            <h2 className="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
-              <div className="w-1 h-5 bg-[#f0a500] rounded-full" />
+            <h2 className="text-lg font-bold text-sb-text flex items-center gap-2">
+              <div className="w-1 h-5 bg-sb-accent rounded-full" />
               {section.title}
             </h2>
             {typeof section.content === 'object' &&
@@ -491,14 +521,8 @@ export default function Home() {
                   }
                 />
               )}
-            {isDynamic && (
-              <button
-                onClick={() => removeDynamicSection(section.id)}
-                className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md bg-[#da3633]/10 text-[#da3633] hover:bg-[#da3633]/20"
-                title="Remove section"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            {isRemovable && (
+              <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove section"><X className="h-3.5 w-3.5" /></button>
             )}
           </div>
         );
@@ -507,8 +531,8 @@ export default function Home() {
         return (
           <div key={section.id} className="space-y-3 relative group">
             {section.title && (
-              <h2 className="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
-                <div className="w-1 h-5 bg-[#f0a500] rounded-full" />
+              <h2 className="text-lg font-bold text-sb-text flex items-center gap-2">
+                <div className="w-1 h-5 bg-sb-accent rounded-full" />
                 {section.title}
               </h2>
             )}
@@ -528,14 +552,8 @@ export default function Home() {
                   mode={mode}
                 />
               )}
-            {isDynamic && (
-              <button
-                onClick={() => removeDynamicSection(section.id)}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md bg-[#da3633]/10 text-[#da3633] hover:bg-[#da3633]/20 z-10"
-                title="Remove section"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            {isRemovable && (
+              <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md z-10" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove section"><X className="h-3.5 w-3.5" /></button>
             )}
           </div>
         );
@@ -544,7 +562,7 @@ export default function Home() {
         return (
           <div key={section.id} className="space-y-3 relative group">
             {section.title && (
-              <h2 className="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
+              <h2 className="text-lg font-bold text-sb-text flex items-center gap-2">
                 <div className="w-1 h-5 bg-violet-500 rounded-full" />
                 {section.title}
               </h2>
@@ -563,14 +581,8 @@ export default function Home() {
                 mode={mode}
               />
             )}
-            {isDynamic && (
-              <button
-                onClick={() => removeDynamicSection(section.id)}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md bg-[#da3633]/10 text-[#da3633] hover:bg-[#da3633]/20 z-10"
-                title="Remove section"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            {isRemovable && (
+              <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md z-10" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove section"><X className="h-3.5 w-3.5" /></button>
             )}
           </div>
         );
@@ -578,8 +590,8 @@ export default function Home() {
       case 'asset':
         return (
           <div key={section.id} className="space-y-2 relative group">
-            <h2 className="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
-              <div className="w-1 h-5 bg-[#f0a500] rounded-full" />
+            <h2 className="text-lg font-bold text-sb-text flex items-center gap-2">
+              <div className="w-1 h-5 bg-sb-accent rounded-full" />
               {section.title}
             </h2>
             {typeof section.content === 'object' &&
@@ -598,35 +610,51 @@ export default function Home() {
                   }
                 />
               )}
-            {isDynamic && (
-              <button
-                onClick={() => removeDynamicSection(section.id)}
-                className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md bg-[#da3633]/10 text-[#da3633] hover:bg-[#da3633]/20"
-                title="Remove section"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            {isRemovable && (
+              <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove section"><X className="h-3.5 w-3.5" /></button>
             )}
           </div>
         );
+
+      case 'pdf-embed': {
+        const pdf = section.content as { dataUrl: string; filename: string };
+        return (
+          <div key={section.id} className="space-y-2 relative group">
+            <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-sb-text)' }}>
+              <div className="w-1 h-5 rounded-full bg-orange-500" />
+              {section.title || pdf.filename}
+            </h2>
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--color-sb-border)' }}>
+              <div className="flex items-center justify-between px-3 py-2" style={{ background: 'var(--color-sb-surface)' }}>
+                <span className="text-xs" style={{ color: 'var(--color-sb-muted)' }}>{pdf.filename}</span>
+                <a href={pdf.dataUrl} download={pdf.filename} className="text-xs" style={{ color: 'var(--color-sb-accent)' }}>↓ Download</a>
+              </div>
+              <embed src={pdf.dataUrl} type="application/pdf" className="w-full" style={{ height: '60vh' }} />
+            </div>
+            {isRemovable && (
+              <button onClick={() => removeSectionFromNote(activeNoteId, section.id)} className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md" style={{ background: 'var(--color-sb-wrong-bg)', color: 'var(--color-sb-wrong)' }} title="Remove"><X className="h-3.5 w-3.5" /></button>
+            )}
+          </div>
+        );
+      }
 
       default:
         return null;
     }
   };
 
-  // ─── Render the note content ────────────────────────────────────────
+  // ─── Render the note content ---
   const renderNoteContent = () => {
     const note = activeNote;
     if (!note) {
       return (
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center space-y-3">
-            <FileText className="h-12 w-12 text-[#8b949e]/20 mx-auto" />
-            <p className="text-sm text-[#8b949e]">No note selected</p>
+            <FileText className="h-12 w-12 text-sb-muted/20 mx-auto" />
+            <p className="text-sm text-sb-muted">No note selected</p>
             <Button
               onClick={() => setNewNoteModalOpen(true)}
-              className="bg-[#f0a500] hover:bg-[#d4940a] text-[#0d1117] rounded-xl"
+              className="bg-sb-accent hover:bg-[#d4940a] text-sb-bg rounded-xl"
             >
               Create New Synthesis
             </Button>
@@ -637,21 +665,21 @@ export default function Home() {
 
     return (
       <div className="space-y-6">
-        {/* ─── Note Header ──────────────────────────────────────── */}
+        {/* ─── Note Header --- */}
         <div className="space-y-4">
           {/* Big serif title */}
           <div className="flex items-start gap-4">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#e6edf3] serif-title leading-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-sb-text serif-title leading-tight">
                 {note.title}
               </h1>
-              <p className="text-sm text-[#8b949e] mt-1">{note.summary}</p>
+              <p className="text-sm text-sb-muted mt-1">{note.summary}</p>
             </div>
           </div>
 
           {/* Breadcrumb-style badges */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge className="bg-[#f0a500]/12 text-[#f0a500] border-[#f0a500]/20 text-[10px]">
+            <Badge className="bg-sb-accent/12 text-sb-accent border-sb-accent/20 text-[10px]">
               {note.category}
             </Badge>
             {note.ddxComparison && (
@@ -664,21 +692,21 @@ export default function Home() {
                 DDx
               </Badge>
             )}
-            <Badge variant="outline" className="text-[10px] border-[#30363d] text-[#8b949e] font-mono">
+            <Badge variant="outline" className="text-[10px] border-sb-border text-sb-muted font-mono">
               ID: {note.id}
             </Badge>
             {/* Note actions */}
             <div className="flex items-center gap-1 ml-auto">
               <button
                 onClick={() => duplicateNote(note.id)}
-                className="h-6 w-6 rounded-md flex items-center justify-center text-[#8b949e] hover:text-[#f0a500] hover:bg-[#1c2330] transition-colors"
+                className="h-6 w-6 rounded-md flex items-center justify-center text-sb-muted hover:text-sb-accent hover:bg-sb-surface2 transition-colors"
                 title="Duplicate note"
               >
                 <Copy className="h-3 w-3" />
               </button>
               <button
                 onClick={() => deleteNote(note.id)}
-                className="h-6 w-6 rounded-md flex items-center justify-center text-[#8b949e] hover:text-[#da3633] hover:bg-[#da3633]/10 transition-colors"
+                className="h-6 w-6 rounded-md flex items-center justify-center text-sb-muted hover:text-sb-wrong hover:bg-sb-wrong/10 transition-colors"
                 title="Delete note"
               >
                 <Trash2 className="h-3 w-3" />
@@ -695,43 +723,19 @@ export default function Home() {
           />
         </div>
 
-        <Separator className="bg-[#30363d]/60" />
+        <Separator className="bg-sb-border/60" />
 
-        {/* ─── Dissection View wrapper ──────────────────────────── */}
+        {/* ─── Dissection View wrapper --- */}
         <DissectionView highYieldSummary={note.highYieldSummary}>
-          <div className="space-y-8">
-            {/* Static Content Sections */}
+          <div className="space-y-8" id="note-print-root">
             {note.sections.map((section) => renderSection(section))}
-
-            {/* Dynamic Content Sections (added by user) */}
-            {dynamicSections.length > 0 && (
-              <>
-                <Separator className="bg-[#30363d]/60" />
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] border-violet-500/40 text-violet-400"
-                    >
-                      Dynamic Content
-                    </Badge>
-                    <span className="text-xs text-[#8b949e]">
-                      {dynamicSections.length} section{dynamicSections.length !== 1 ? 's' : ''} added
-                    </span>
-                  </div>
-                  <div className="space-y-6">
-                    {dynamicSections.map((section) => renderSection(section, true))}
-                  </div>
-                </div>
-              </>
-            )}
           </div>
         </DissectionView>
       </div>
     );
   };
 
-  // ─── Render view based on active panel ──────────────────────────────
+  // ─── Render view based on active panel ---
   const renderView = () => {
     switch (activeView) {
       case 'home':
@@ -740,18 +744,49 @@ export default function Home() {
       case 'notes':
         if (mode === 'developer') {
           return (
-            <div className="h-full flex gap-4">
-              {/* Main content area */}
-              <div className="flex-1 min-w-0 overflow-auto">
-                <div className="max-w-5xl mx-auto">{renderNoteContent()}</div>
-              </div>
-              {/* Developer side panel */}
-              <div className="w-96 flex-shrink-0 hidden lg:block">
-                <div className="h-full rounded-2xl border border-[#30363d] overflow-hidden">
-                  <DeveloperView initialContent={devHtmlContent} />
+            <>
+              {/* Normal note content in background */}
+              {renderNoteContent()}
+              
+              {/* Full-screen Developer Overlay */}
+              <div className="fixed inset-0 z-[100] bg-sb-bg flex flex-col p-4 animate-in fade-in zoom-in duration-200">
+                <div className="flex items-center justify-between mb-4">
+                   <div className="flex items-center gap-4">
+                     <div className="flex items-center gap-2">
+                       <Code2 className="h-5 w-5 text-sb-accent" />
+                       <h2 className="text-lg font-bold text-sb-text">Developer Workspace</h2>
+                     </div>
+                     <Separator orientation="vertical" className="h-6 bg-sb-border" />
+                     <TriModeSwitcher />
+                   </div>
+                   <div className="flex items-center gap-3">
+                     <span className="text-xs text-sb-muted font-medium truncate max-w-[200px] hidden sm:block">
+                       Editing: {activeNote.title}
+                     </span>
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       onClick={() => setMode('read')}
+                       className="text-sb-muted hover:text-sb-text gap-2"
+                     >
+                       <X className="h-4 w-4" />
+                       Close
+                     </Button>
+                   </div>
+                </div>
+                <div className="flex-1 rounded-2xl border border-sb-border overflow-hidden bg-sb-surface shadow-2xl">
+                  <DeveloperView 
+                    initialContent={activeNote.sections
+                      .filter(s => s.type === 'content')
+                      .map(s => `## ${s.title}\n${typeof s.content === 'string' ? s.content : ''}`)
+                      .join('\n\n')} 
+                    onContentChange={(newContent) => {
+                       // Logic to update note if needed, but for now just pass it
+                    }}
+                  />
                 </div>
               </div>
-            </div>
+            </>
           );
         }
         return renderNoteContent();
@@ -761,29 +796,15 @@ export default function Home() {
 
       case 'connectome':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-[#8b949e] hover:text-[#f0a500] gap-1.5"
-                onClick={() => setFullscreenView('connectome')}
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-                Fullscreen
-              </Button>
-            </div>
-            <ConnectomeView
-              centerNode={activeNote.id}
-              links={activeNote.links.map((l) => ({
-                source: activeNote.id,
-                target: l.targetId,
-                relation: l.relation,
-                label: l.label,
-              }))}
-            />
-          </div>
+          <ConnectomeView
+            centerNode={activeNote.id}
+            links={activeNote.links.map((l) => ({
+              source: activeNote.id,
+              target: l.targetId,
+              relation: l.relation,
+              label: l.label,
+            }))}
+          />
         );
 
       case 'mindmap':
@@ -794,7 +815,7 @@ export default function Home() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-[#8b949e] hover:text-[#f0a500] gap-1.5"
+                className="text-xs text-sb-muted hover:text-sb-accent gap-1.5"
                 onClick={() => setFullscreenView('mindmap')}
               >
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -822,8 +843,8 @@ export default function Home() {
                 className={cn(
                   'flex flex-col items-center justify-center h-[60vh] rounded-2xl border-2 border-dashed transition-all duration-200',
                   pdfDragOver
-                    ? 'border-[#f0a500] bg-[#f0a500]/5'
-                    : 'border-[#30363d] hover:border-[#8b949e]/40'
+                    ? 'border-sb-accent bg-sb-accent/5'
+                    : 'border-sb-border hover:border-sb-muted/40'
                 )}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -833,14 +854,14 @@ export default function Home() {
                 onDrop={handlePdfDrop}
               >
                 <div className="text-center space-y-4">
-                  <div className="mx-auto h-16 w-16 rounded-2xl bg-[#1c2330] flex items-center justify-center">
-                    <FileUp className="h-8 w-8 text-[#8b949e]/40" />
+                  <div className="mx-auto h-16 w-16 rounded-2xl bg-sb-surface2 flex items-center justify-center">
+                    <FileUp className="h-8 w-8 text-sb-muted/40" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-[#e6edf3]">
+                    <h3 className="text-sm font-medium text-sb-text">
                       PDF-to-Synthesis Workspace
                     </h3>
-                    <p className="text-xs text-[#8b949e]/60 mt-1">
+                    <p className="text-xs text-sb-muted/60 mt-1">
                       Drop a PDF here or click to upload. Split-screen viewer with automatic
                       snippet extraction.
                     </p>
@@ -849,7 +870,7 @@ export default function Home() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-[#30363d] text-[#8b949e] hover:text-[#f0a500] hover:border-[#f0a500]/30 gap-2"
+                      className="border-sb-border text-sb-muted hover:text-sb-accent hover:border-sb-accent/30 gap-2"
                       asChild
                     >
                       <span>
@@ -870,17 +891,17 @@ export default function Home() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-[#f0a500]/12 text-[#f0a500] border-[#f0a500]/20 text-[10px]">
+                    <Badge className="bg-sb-accent/12 text-sb-accent border-sb-accent/20 text-[10px]">
                       PDF Loaded
                     </Badge>
-                    <span className="text-xs text-[#8b949e] truncate max-w-[200px]">
+                    <span className="text-xs text-sb-muted truncate max-w-[200px]">
                       {pdfFile.name}
                     </span>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-xs text-[#da3633] hover:text-[#da3633] hover:bg-[#da3633]/10 gap-1.5"
+                    className="text-xs text-sb-wrong hover:text-sb-wrong hover:bg-sb-wrong/10 gap-1.5"
                     onClick={() => {
                       setPdfFile(null);
                       if (pdfIframeUrl) {
@@ -893,7 +914,7 @@ export default function Home() {
                     Remove
                   </Button>
                 </div>
-                <div className="rounded-2xl border border-[#30363d] overflow-hidden bg-[#161b22]">
+                <div className="rounded-2xl border border-sb-border overflow-hidden bg-sb-surface">
                   <iframe
                     src={pdfIframeUrl || ''}
                     className="w-full h-[70vh]"
@@ -911,21 +932,21 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#0d1117] text-[#e6edf3]">
-      {/* ═════════════════════════════════════════════════════════════════
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--color-sb-bg)', color: 'var(--color-sb-text)' }}>
+      {/* ---
           HEADER — Notion-style: breadcrumb → mode → actions
-          ═════════════════════════════════════════════════════════════════ */}
-      <header className="flex items-center justify-between px-3 py-1.5 border-b border-[#30363d]/60 glass-strong z-10">
+          --- */}
+      <header className="flex items-center justify-between px-3 py-1.5 border-b border-sb-border/60 glass-strong z-10">
         {/* Left: Breadcrumb */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#8b949e] min-w-0">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-sb-muted min-w-0">
             <span className="truncate">{activeNote?.category || 'Notes'}</span>
             <ChevronRight className="h-3 w-3 shrink-0" />
-            <span className="text-[#e6edf3] font-medium truncate max-w-[180px]">
+            <span className="text-sb-text font-medium truncate max-w-[180px]">
               {activeNote?.title || 'Untitled'}
             </span>
           </div>
-          <Separator orientation="vertical" className="h-5 bg-[#30363d] hidden sm:block" />
+          <Separator orientation="vertical" className="h-5 bg-sb-border hidden sm:block" />
           <TriModeSwitcher />
         </div>
 
@@ -935,7 +956,7 @@ export default function Home() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330] gap-1"
+            className="h-8 w-8 text-sb-muted hover:text-sb-text hover:bg-sb-surface2 gap-1"
             onClick={() => setSearchOpen(true)}
             title="Search (⌘K)"
           >
@@ -947,7 +968,7 @@ export default function Home() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+              className="h-8 w-8 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
               onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
               title="Export"
             >
@@ -960,34 +981,34 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.95 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-[#161b22]/95 backdrop-blur-xl border border-[#30363d] shadow-xl shadow-black/40 py-1 z-50"
+                  className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-sb-surface/95 backdrop-blur-xl border border-sb-border shadow-xl shadow-black/40 py-1 z-50"
                 >
                   <button
-                    className="w-full px-3 py-2 text-xs text-left text-[#e6edf3] hover:bg-[#1c2330] flex items-center gap-2"
+                    className="w-full px-3 py-2 text-xs text-left text-sb-text hover:bg-sb-surface2 flex items-center gap-2"
                     onClick={() => handleExport('json')}
                   >
-                    <FileText className="h-3.5 w-3.5 text-[#8b949e]" />
+                    <FileText className="h-3.5 w-3.5 text-sb-muted" />
                     Export JSON
                   </button>
                   <button
-                    className="w-full px-3 py-2 text-xs text-left text-[#e6edf3] hover:bg-[#1c2330] flex items-center gap-2"
+                    className="w-full px-3 py-2 text-xs text-left text-sb-text hover:bg-sb-surface2 flex items-center gap-2"
                     onClick={() => handleExport('html')}
                   >
-                    <FileText className="h-3.5 w-3.5 text-[#8b949e]" />
+                    <FileText className="h-3.5 w-3.5 text-sb-muted" />
                     Export HTML
                   </button>
                   <button
-                    className="w-full px-3 py-2 text-xs text-left text-[#e6edf3] hover:bg-[#1c2330] flex items-center gap-2"
+                    className="w-full px-3 py-2 text-xs text-left text-sb-text hover:bg-sb-surface2 flex items-center gap-2"
                     onClick={handleExportPDF}
                   >
-                    <FileText className="h-3.5 w-3.5 text-[#8b949e]" />
+                    <FileText className="h-3.5 w-3.5 text-sb-muted" />
                     Export PDF
                   </button>
                   <button
-                    className="w-full px-3 py-2 text-xs text-left text-[#e6edf3] hover:bg-[#1c2330] flex items-center gap-2"
+                    className="w-full px-3 py-2 text-xs text-left text-sb-text hover:bg-sb-surface2 flex items-center gap-2"
                     onClick={handleExportAnki}
                   >
-                    <FileText className="h-3.5 w-3.5 text-[#8b949e]" />
+                    <FileText className="h-3.5 w-3.5 text-sb-muted" />
                     Export Anki
                   </button>
                 </motion.div>
@@ -1002,8 +1023,8 @@ export default function Home() {
             className={cn(
               'h-8 w-8',
               dissectionMode
-                ? 'text-[#f0a500] bg-[#f0a500]/10'
-                : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                ? 'text-sb-accent bg-sb-accent/10'
+                : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
             )}
             onClick={() => useNoteToolStore.getState().toggleDissection()}
             title="Dissect Note"
@@ -1019,7 +1040,7 @@ export default function Home() {
               'h-8 w-8',
               activeView === 'ddx'
                 ? 'text-rose-400 bg-rose-500/10'
-                : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
             )}
             onClick={() => setActiveView(activeView === 'ddx' ? 'notes' : 'ddx')}
             title="DDx Splitter"
@@ -1027,13 +1048,25 @@ export default function Home() {
             <ArrowLeftRight className="h-4 w-4" />
           </Button>
 
-          <Separator orientation="vertical" className="h-5 bg-[#30363d]" />
+          <Separator orientation="vertical" className="h-5 bg-sb-border" />
+
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            style={{ color: 'var(--color-sb-muted)' }}
+            onClick={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
 
           {/* Settings */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+            className="h-8 w-8 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
             onClick={() => setSettingsModalOpen(true)}
             title="Settings"
           >
@@ -1044,7 +1077,7 @@ export default function Home() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+            className="h-8 w-8 text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
             onClick={() => setAccountModalOpen(true)}
             title="Account"
           >
@@ -1053,27 +1086,31 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ═════════════════════════════════════════════════════════════════
+      {/* ---
           MAIN CONTENT
-          ═════════════════════════════════════════════════════════════════ */}
+          --- */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <Sidebar />
 
         {/* Content Area */}
-        <main className="flex-1 overflow-auto">
-          <div
-            className={cn(
-              'max-w-5xl mx-auto p-6',
-              mode === 'read' && 'max-w-4xl'
-            )}
-          >
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <main className="flex-1 overflow-auto" id="note-scroll-container">
+              <div className="relative min-h-full">
+                <GlobalAnnotationOverlay />
+                <div
+                  className={cn(
+                    'max-w-5xl mx-auto p-6',
+                    mode === 'read' && 'max-w-4xl'
+                  )}
+                >
             {/* View label for non-notes views */}
             {activeView !== 'home' && activeView !== 'notes' && activeView !== 'library' && (
               <div className="mb-4 flex items-center gap-2">
                 <Badge
                   variant="outline"
-                  className="text-[10px] border-[#f0a500]/30 text-[#f0a500]"
+                  className="text-[10px] border-sb-accent/30 text-sb-accent"
                 >
                   {activeView === 'connectome'
                     ? 'Connectome View'
@@ -1088,7 +1125,7 @@ export default function Home() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs text-[#8b949e] hover:text-[#f0a500]"
+                  className="text-xs text-sb-muted hover:text-sb-accent"
                   onClick={() => setActiveView('notes')}
                 >
                   Back to Note
@@ -1096,11 +1133,57 @@ export default function Home() {
               </div>
             )}
 
-            {renderView()}
+              {renderView()}
+            </div>
           </div>
         </main>
+      </ContextMenuTrigger>
+          <ContextMenuContent
+            style={{ background: 'var(--color-sb-surface)', borderColor: 'var(--color-sb-border)', color: 'var(--color-sb-text)' }}
+            className="w-52 rounded-xl shadow-xl border text-xs"
+          >
+            <ContextMenuItem
+              className="gap-2 cursor-pointer"
+              onClick={() => navigator.clipboard.writeText(activeNote?.title ?? '')}
+            >
+              <Copy className="h-3.5 w-3.5" style={{ color: 'var(--color-sb-muted)' }} />
+              Copy Note Title
+            </ContextMenuItem>
+            <ContextMenuItem className="gap-2 cursor-pointer" onClick={() => activeNote && duplicateNote(activeNote.id)}>
+              <FileText className="h-3.5 w-3.5" style={{ color: 'var(--color-sb-muted)' }} />
+              Duplicate Note
+            </ContextMenuItem>
+            <ContextMenuSeparator style={{ background: 'var(--color-sb-border)' }} />
+            <ContextMenuItem className="gap-2 cursor-pointer" onClick={() => handleExport('html')}>
+              <Download className="h-3.5 w-3.5" style={{ color: 'var(--color-sb-muted)' }} />
+              Export HTML
+            </ContextMenuItem>
+            <ContextMenuItem className="gap-2 cursor-pointer" onClick={handleExportPDF}>
+              <Download className="h-3.5 w-3.5" style={{ color: 'var(--color-sb-muted)' }} />
+              Export PDF
+            </ContextMenuItem>
+            <ContextMenuSeparator style={{ background: 'var(--color-sb-border)' }} />
+            <ContextMenuItem className="gap-2 cursor-pointer" onClick={() => useNoteToolStore.getState().toggleDissection()}>
+              <Scissors className="h-3.5 w-3.5" style={{ color: 'var(--color-sb-muted)' }} />
+              Toggle Dissection
+            </ContextMenuItem>
+            <ContextMenuItem className="gap-2 cursor-pointer" onClick={() => setActiveView('ddx')}>
+              <ArrowLeftRight className="h-3.5 w-3.5" style={{ color: 'var(--color-sb-muted)' }} />
+              Open in DDx
+            </ContextMenuItem>
+            <ContextMenuSeparator style={{ background: 'var(--color-sb-border)' }} />
+            <ContextMenuItem
+              className="gap-2 cursor-pointer"
+              style={{ color: 'var(--color-sb-wrong)' }}
+              onClick={() => activeNote && deleteNote(activeNote.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Note
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
-        {/* ─── CONTENT TOOLBAR PANEL ────────────────────────────── */}
+        {/* ─── CONTENT TOOLBAR PANEL --- */}
         <AnimatePresence>
           {contentToolbarOpen && (
             <motion.div
@@ -1108,14 +1191,14 @@ export default function Home() {
               animate={{ width: 256, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="flex-shrink-0 border-l border-[#30363d]/60 bg-[#0d1117] overflow-y-auto overflow-hidden"
+              className="flex-shrink-0 border-l border-sb-border/60 bg-sb-bg overflow-y-auto overflow-hidden"
             >
               <div className="w-64 p-3">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-[#f0a500]">Add Content</span>
+                  <span className="text-xs font-semibold text-sb-accent">Add Content</span>
                   <button
                     onClick={() => setContentToolbarOpen(false)}
-                    className="h-5 w-5 rounded-md flex items-center justify-center text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]"
+                    className="h-5 w-5 rounded-md flex items-center justify-center text-sb-muted hover:text-sb-text hover:bg-sb-surface2"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -1127,28 +1210,28 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* ─── FLOATING "+ ADD CONTENT" BUTTON ──────────────────────────── */}
+      {/* ─── FLOATING "+ ADD CONTENT" BUTTON --- */}
       {!contentToolbarOpen && (
         <button
           onClick={() => setContentToolbarOpen(true)}
-          className="fixed bottom-16 right-6 z-40 h-10 w-10 rounded-full bg-[#f0a500] hover:bg-[#d4940a] text-[#0d1117] shadow-lg shadow-[#f0a500]/30 flex items-center justify-center transition-all hover:scale-105 fab-bounce-in"
+          className="fixed bottom-16 right-6 z-40 h-10 w-10 rounded-full bg-sb-accent hover:bg-[#d4940a] text-sb-bg shadow-lg shadow-[var(--color-sb-accent)]/30 flex items-center justify-center transition-all hover:scale-105 fab-bounce-in"
           title="Add Content"
         >
           <Plus className="h-5 w-5" />
         </button>
       )}
 
-      {/* ─── STATUS BAR ──────────────────────────────────────────────── */}
+      {/* ─── STATUS BAR --- */}
       <StatusBar />
 
-      {/* ─── MODALS ──────────────────────────────────────────────────── */}
+      {/* ─── MODALS --- */}
       <SettingsModal />
       <NewNoteModal />
       <AccountModal />
 
-      {/* ═════════════════════════════════════════════════════════════════
+      {/* ---
           COMMAND PALETTE (Cmd+K)
-          ═════════════════════════════════════════════════════════════════ */}
+          --- */}
       <AnimatePresence>
         {searchOpen && (
           <>
@@ -1173,10 +1256,10 @@ export default function Home() {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="fixed top-[15%] left-1/2 -translate-x-1/2 z-[9001] w-full max-w-lg"
             >
-              <div className="rounded-2xl bg-[#161b22]/90 backdrop-blur-2xl border border-[#30363d]/80 shadow-2xl shadow-black/60 overflow-hidden">
+              <div className="rounded-2xl bg-sb-surface/90 backdrop-blur-2xl border border-sb-border/80 shadow-2xl shadow-black/60 overflow-hidden">
                 {/* Search Input */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-[#30363d]/60">
-                  <Search className="h-4 w-4 text-[#8b949e] shrink-0" />
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-sb-border/60">
+                  <Search className="h-4 w-4 text-sb-muted shrink-0" />
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -1187,9 +1270,9 @@ export default function Home() {
                     }}
                     onKeyDown={handleSearchKeyDown}
                     placeholder="Search notes by title, specialty, or tags..."
-                    className="flex-1 bg-transparent text-sm text-[#e6edf3] placeholder:text-[#8b949e]/50 outline-none"
+                    className="flex-1 bg-transparent text-sm text-sb-text placeholder:text-sb-muted/50 outline-none"
                   />
-                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#0d1117] border border-[#30363d] text-[10px] text-[#8b949e] font-mono">
+                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-sb-bg border border-sb-border text-[10px] text-sb-muted font-mono">
                     <Command className="h-2.5 w-2.5" />K
                   </kbd>
                 </div>
@@ -1198,7 +1281,7 @@ export default function Home() {
                 <div className="max-h-72 overflow-y-auto py-1 custom-scrollbar">
                   {filteredNotes.length === 0 && (
                     <div className="px-4 py-8 text-center">
-                      <p className="text-xs text-[#8b949e]/60">No notes found</p>
+                      <p className="text-xs text-sb-muted/60">No notes found</p>
                     </div>
                   )}
                   {filteredNotes.map((note, idx) => (
@@ -1207,8 +1290,8 @@ export default function Home() {
                       className={cn(
                         'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
                         idx === clampedIndex
-                          ? 'bg-[#f0a500]/10 text-[#e6edf3]'
-                          : 'text-[#8b949e] hover:bg-[#1c2330]'
+                          ? 'bg-sb-accent/10 text-sb-text'
+                          : 'text-sb-muted hover:bg-sb-surface2'
                       )}
                       onClick={() => {
                         store.setActiveNoteId(note.id);
@@ -1221,7 +1304,7 @@ export default function Home() {
                       <FileText className="h-4 w-4 shrink-0 opacity-50" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{note.title}</p>
-                        <p className="text-[10px] text-[#8b949e]/60 truncate">
+                        <p className="text-[10px] text-sb-muted/60 truncate">
                           {note.specialty} · {note.category}
                         </p>
                       </div>
@@ -1230,7 +1313,7 @@ export default function Home() {
                           {note.tags.slice(0, 2).map((tag) => (
                             <span
                               key={tag}
-                              className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#30363d]/50 text-[#8b949e]"
+                              className="text-[9px] px-1.5 py-0.5 rounded-full bg-sb-border/50 text-sb-muted"
                             >
                               {tag}
                             </span>
@@ -1242,7 +1325,7 @@ export default function Home() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-4 py-2 border-t border-[#30363d]/40 text-[10px] text-[#8b949e]/50">
+                <div className="flex items-center justify-between px-4 py-2 border-t border-sb-border/40 text-[10px] text-sb-muted/50">
                   <span>
                     {filteredNotes.length} result{filteredNotes.length !== 1 ? 's' : ''}
                   </span>
@@ -1260,9 +1343,9 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* ═════════════════════════════════════════════════════════════════
+      {/* ---
           FULLSCREEN VIEW OVERLAY
-          ═════════════════════════════════════════════════════════════════ */}
+          --- */}
       <AnimatePresence>
         {fullscreenView !== 'none' && (
           <motion.div
@@ -1270,12 +1353,12 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-[#0d1117] flex flex-col"
+            className="fixed inset-0 z-50 bg-sb-bg flex flex-col"
           >
             {/* Fullscreen Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#30363d]/60">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-sb-border/60">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] border-[#f0a500]/30 text-[#f0a500]">
+                <Badge variant="outline" className="text-[10px] border-sb-accent/30 text-sb-accent">
                   {fullscreenView === 'connectome'
                     ? 'Connectome'
                     : fullscreenView === 'mindmap'
@@ -1284,12 +1367,12 @@ export default function Home() {
                         ? 'Flowchart'
                         : ''}
                 </Badge>
-                <span className="text-xs text-[#8b949e]">Fullscreen</span>
+                <span className="text-xs text-sb-muted">Fullscreen</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-[#8b949e] hover:text-[#e6edf3] gap-1.5"
+                className="text-xs text-sb-muted hover:text-sb-text gap-1.5"
                 onClick={() => setFullscreenView('none')}
               >
                 <Minimize2 className="h-3.5 w-3.5" />
@@ -1311,15 +1394,20 @@ export default function Home() {
                 />
               )}
               {fullscreenView === 'mindmap' && <MindmapView markdown={mindmapMarkdown} />}
+              {fullscreenView === 'mermaid' && fullscreenMermaidCode && (
+                <MermaidDiagram 
+                  id="fullscreen-mermaid" 
+                  title="Fullscreen Diagram" 
+                  code={fullscreenMermaidCode} 
+                  isFullScreen={true}
+                />
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ═════════════════════════════════════════════════════════════════
-          GLOBAL ANNOTATION OVERLAY — fixed, on top of everything
-          ═════════════════════════════════════════════════════════════════ */}
-      <GlobalAnnotationOverlay />
+      {/* Global Annotation Overlay — Moved inside main scroll container in executions below */}
     </div>
   );
 }

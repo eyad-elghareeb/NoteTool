@@ -43,88 +43,95 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* PoC Design System Colors */
-  --color-sb-bg: #0d1117;
-  --color-sb-surface: #161b22;
-  --color-sb-surface2: #1c2330;
-  --color-sb-surface3: #222a36;
-  --color-sb-border: #30363d;
-  --color-sb-accent: #f0a500;
-  --color-sb-text: #e6edf3;
-  --color-sb-muted: #8b949e;
-  --color-sb-correct: #2ea043;
-  --color-sb-wrong: #da3633;
+  /* SurgicalBrain Design Token System */
+  --color-sb-bg: var(--sb-bg);
+  --color-sb-surface: var(--sb-surface);
+  --color-sb-surface2: var(--sb-surface2);
+  --color-sb-surface3: var(--sb-surface3);
+  --color-sb-border: var(--sb-border);
+  --color-sb-text: var(--sb-text);
+  --color-sb-muted: var(--sb-muted);
+  --color-sb-accent: var(--sb-accent);
+  --color-sb-wrong: var(--sb-wrong);
+  --color-sb-correct: var(--sb-correct);
 }
 
 :root {
+  --sb-bg: #0d1117;
+  --sb-surface: #161b22;
+  --sb-surface2: #1c2330;
+  --sb-surface3: #222a36;
+  --sb-border: #30363d;
+  --sb-text: #e6edf3;
+  --sb-muted: #8b949e;
+  --sb-accent: #f0a500;
+  --sb-wrong: #da3633;
+  --sb-correct: #2ea043;
   --radius: 0.75rem;
 
-  /* PoC Color System — Always Dark */
-  --background: #0d1117;
-  --foreground: #e6edf3;
-  --card: #161b22;
-  --card-foreground: #e6edf3;
-  --popover: #161b22;
-  --popover-foreground: #e6edf3;
-  --primary: #f0a500;
+  /* Shadcn Variables - Mapped to SB Tokens */
+  --background: var(--sb-bg);
+  --foreground: var(--sb-text);
+  --card: var(--sb-surface);
+  --card-foreground: var(--sb-text);
+  --popover: var(--sb-surface);
+  --popover-foreground: var(--sb-text);
+  --primary: var(--sb-accent);
   --primary-foreground: #0d1117;
-  --secondary: #1c2330;
-  --secondary-foreground: #e6edf3;
-  --muted: #1c2330;
-  --muted-foreground: #8b949e;
-  --accent: #f0a500;
+  --secondary: var(--sb-surface2);
+  --secondary-foreground: var(--sb-text);
+  --muted: var(--sb-surface2);
+  --muted-foreground: var(--sb-muted);
+  --accent: var(--sb-accent);
   --accent-foreground: #0d1117;
-  --destructive: #da3633;
-  --border: #30363d;
-  --input: #30363d;
-  --ring: #f0a500;
-  --chart-1: #f0a500;
-  --chart-2: #2ea043;
-  --chart-3: #da3633;
+  --destructive: var(--sb-wrong);
+  --border: var(--sb-border);
+  --input: var(--sb-border);
+  --ring: var(--sb-accent);
+  --chart-1: var(--sb-accent);
+  --chart-2: var(--sb-correct);
+  --chart-3: var(--sb-wrong);
   --chart-4: #38bdf8;
   --chart-5: #a78bfa;
-  --sidebar: #0d1117;
-  --sidebar-foreground: #e6edf3;
-  --sidebar-primary: #f0a500;
+  --sidebar: var(--sb-bg);
+  --sidebar-foreground: var(--sb-text);
+  --sidebar-primary: var(--sb-accent);
   --sidebar-primary-foreground: #0d1117;
-  --sidebar-accent: #1c2330;
-  --sidebar-accent-foreground: #e6edf3;
-  --sidebar-border: #30363d;
-  --sidebar-ring: #f0a500;
+  --sidebar-accent: var(--sb-surface2);
+  --sidebar-accent-foreground: var(--sb-text);
+  --sidebar-border: var(--sb-border);
+  --sidebar-ring: var(--sb-accent);
+}
+
+[data-theme="light"] {
+  --sb-bg: #f3f0eb;
+  --sb-surface: #ffffff;
+  --sb-surface2: #f8f6f1;
+  --sb-surface3: #eeeae4;
+  --sb-border: #d0ccc5;
+  --sb-text: #1c1917;
+  --sb-muted: #78716c;
+  --sb-accent: #c27803;
+  --sb-wrong: #dc2626;
+  --sb-correct: #16a34a;
+
+  --primary-foreground: #ffffff;
+  --accent-foreground: #ffffff;
+  --sidebar-primary-foreground: #ffffff;
 }
 
 .dark {
-  --background: #0d1117;
-  --foreground: #e6edf3;
-  --card: #161b22;
-  --card-foreground: #e6edf3;
-  --popover: #161b22;
-  --popover-foreground: #e6edf3;
-  --primary: #f0a500;
-  --primary-foreground: #0d1117;
-  --secondary: #1c2330;
-  --secondary-foreground: #e6edf3;
-  --muted: #1c2330;
-  --muted-foreground: #8b949e;
-  --accent: #f0a500;
-  --accent-foreground: #0d1117;
-  --destructive: #da3633;
-  --border: #30363d;
-  --input: #30363d;
-  --ring: #f0a500;
-  --chart-1: #f0a500;
-  --chart-2: #2ea043;
-  --chart-3: #da3633;
-  --chart-4: #38bdf8;
-  --chart-5: #a78bfa;
-  --sidebar: #0d1117;
-  --sidebar-foreground: #e6edf3;
-  --sidebar-primary: #f0a500;
-  --sidebar-primary-foreground: #0d1117;
-  --sidebar-accent: #1c2330;
-  --sidebar-accent-foreground: #e6edf3;
-  --sidebar-border: #30363d;
-  --sidebar-ring: #f0a500;
+  /* Ensure .dark class also triggers dark variables if used by components */
+  --sb-bg: #0d1117;
+  --sb-surface: #161b22;
+  --sb-surface2: #1c2330;
+  --sb-surface3: #222a36;
+  --sb-border: #30363d;
+  --sb-text: #e6edf3;
+  --sb-muted: #8b949e;
+  --sb-accent: #f0a500;
+  --sb-wrong: #da3633;
+  --sb-correct: #2ea043;
 }
 
 @layer base {
@@ -147,11 +154,21 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.80);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
 .glass-strong {
   background: rgba(22, 27, 34, 0.92);
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] .glass-strong {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -170,7 +187,7 @@
 .prose h4 {
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #e6edf3;
+  color: var(--sb-text);
 }
 
 .prose h1 {
@@ -184,7 +201,7 @@
   margin-top: 1.8em;
   margin-bottom: 0.6em;
   padding-bottom: 0.3em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--sb-border);
 }
 
 .prose h3 {
@@ -198,7 +215,7 @@
 }
 
 .prose strong {
-  color: #e6edf3;
+  color: var(--sb-text);
   font-weight: 600;
 }
 
@@ -222,24 +239,24 @@
 .prose th {
   text-align: left;
   padding: 0.5em 0.75em;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.10);
+  border-bottom: 2px solid var(--sb-border);
   font-weight: 600;
-  color: #e6edf3;
+  color: var(--sb-text);
 }
 
 .prose td {
   padding: 0.4em 0.75em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--sb-border);
 }
 
 .prose tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--sb-surface2);
 }
 
 /* Amber accent for code and inline markers */
 .prose code {
-  background: rgba(240, 165, 0, 0.10);
-  color: #f0a500;
+  background: var(--sb-surface2);
+  color: var(--sb-accent);
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-family: var(--font-geist-mono), monospace;
@@ -247,7 +264,7 @@
 }
 
 .prose a {
-  color: #f0a500;
+  color: var(--sb-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }

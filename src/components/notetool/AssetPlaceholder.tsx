@@ -25,7 +25,7 @@ export function AssetPlaceholder({ data }: AssetPlaceholderProps) {
       <Card className="border-border/30 bg-card/40 overflow-hidden">
         <CardContent className="p-0">
           {/* PDF viewer area */}
-          <div className="relative bg-[#0d1117] border-b border-border/20">
+          <div className="relative bg-sb-bg border-b border-border/20">
             <iframe
               src={data.path}
               className="w-full h-[500px] rounded-none"
@@ -34,7 +34,7 @@ export function AssetPlaceholder({ data }: AssetPlaceholderProps) {
             />
             {/* PDF overlay controls */}
             <div className="absolute top-2 right-2 flex gap-1">
-              <Badge variant="outline" className="text-[9px] border-border/30 bg-background/80 backdrop-blur-sm text-[#f0a500]">
+              <Badge variant="outline" className="text-[9px] border-border/30 bg-background/80 backdrop-blur-sm text-sb-accent">
                 PDF
               </Badge>
               <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-background/90">

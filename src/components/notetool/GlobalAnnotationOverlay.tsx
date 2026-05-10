@@ -22,7 +22,7 @@ import {
 // ─── Color Palettes ──────────────────────────────────────────────────
 
 const PEN_COLORS = [
-  { id: 'amber', color: '#f0a500' },
+  { id: 'amber', color: 'var(--color-sb-accent)' },
   { id: 'red', color: '#ef4444' },
   { id: 'green', color: '#22c55e' },
   { id: 'cyan', color: '#06b6d4' },
@@ -31,7 +31,7 @@ const PEN_COLORS = [
 ];
 
 const TEXT_HL_COLORS = [
-  { id: 'amber', color: '#f0a500' },
+  { id: 'amber', color: 'var(--color-sb-accent)' },
   { id: 'yellow', color: '#fbbf24' },
   { id: 'green', color: '#34d399' },
   { id: 'cyan', color: '#22d3ee' },
@@ -43,7 +43,7 @@ const FREE_HL_COLORS = [
   { id: 'yellow', color: '#fbbf24' },
   { id: 'green', color: '#34d399' },
   { id: 'pink', color: '#f472b6' },
-  { id: 'amber', color: '#f0a500' },
+  { id: 'amber', color: 'var(--color-sb-accent)' },
   { id: 'cyan', color: '#22d3ee' },
 ];
 
@@ -98,6 +98,7 @@ function freeHighlightWidth(brushSize: number): number {
 
 export function GlobalAnnotationOverlay() {
   const {
+    mode,
     globalPenActive,
     setGlobalPenActive,
     globalPenTool,
@@ -121,21 +122,36 @@ export function GlobalAnnotationOverlay() {
     clearAllAnnotations,
   } = useNoteToolStore();
 
+  // ── Only available in annotate mode ──────────────────────────────
+  if (mode !== 'annotate') return null;
+
   // ─── Local State ─────────────────────────────────────────────────
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
   const [selectedStickyColor, setSelectedStickyColor] = useState('yellow');
   const [dragNote, setDragNote] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  const [mounted, setMounted] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // ─── Viewport Resize ─────────────────────────────────────────────
   useEffect(() => {
-    const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    setMounted(true);
+  }, []);
+
+  const totalAnnotations = stickyNotes.length + highlightRegions.length + drawingPaths.length;
+
+  // ─── Don't render until mounted or if not in annotate mode ─────
+  if (!mounted || mode !== 'annotate') return null;
+
+  // ─── Coordinate Helper ───────────────────────────────────────────
+  const getCoordinates = useCallback((e: { clientX: number; clientY: number }) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const svg = svgRef.current;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const transformed = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+    return { x: transformed.x, y: transformed.y };
   }, []);
 
   // ─── Text Highlight: Capture Selection ───────────────────────────
@@ -157,11 +173,16 @@ export function GlobalAnnotationOverlay() {
       for (let i = 0; i < clientRects.length; i++) {
         const r = clientRects[i];
         if (r.width < 2) continue;
+        
+        // Convert viewport rect to SVG coordinates
+        const tl = getCoordinates({ clientX: r.left, clientY: r.top });
+        const br = getCoordinates({ clientX: r.right, clientY: r.bottom });
+        
         rects.push({
-          x: r.left,
-          y: r.top,
-          width: r.width,
-          height: r.height,
+          x: tl.x,
+          y: tl.y,
+          width: br.x - tl.x,
+          height: br.y - tl.y,
         });
       }
 
@@ -210,18 +231,20 @@ export function GlobalAnnotationOverlay() {
       if (globalPenTool !== 'pen' && globalPenTool !== 'highlight-free') return;
 
       setIsDrawing(true);
-      setCurrentPath([{ x: e.clientX, y: e.clientY }]);
+      const coords = getCoordinates(e);
+      setCurrentPath([coords]);
     },
-    [globalPenActive, globalPenTool]
+    [globalPenActive, globalPenTool, getCoordinates]
   );
 
   const handlePointerMove = useCallback(
     (e: ReactMouseEvent<SVGSVGElement>) => {
       if (!isDrawing) return;
       if (globalPenTool !== 'pen' && globalPenTool !== 'highlight-free') return;
-      setCurrentPath((prev) => [...prev, { x: e.clientX, y: e.clientY }]);
+      const coords = getCoordinates(e);
+      setCurrentPath((prev) => [...prev, coords]);
     },
-    [isDrawing, globalPenTool]
+    [isDrawing, globalPenTool, getCoordinates]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -257,10 +280,11 @@ export function GlobalAnnotationOverlay() {
       // ── Sticky Note placement ──
       if (globalPenTool === 'sticky') {
         const colorSet = STICKY_COLORS.find((c) => c.id === selectedStickyColor) || STICKY_COLORS[0];
+        const coords = getCoordinates(e);
         const newNote: StickyNoteType = {
           id: `note-${Date.now()}`,
-          x: e.clientX - 88,
-          y: e.clientY - 20,
+          x: coords.x - 88,
+          y: coords.y - 20,
           text: '',
           color: colorSet.id,
           timestamp: Date.now(),
@@ -271,8 +295,9 @@ export function GlobalAnnotationOverlay() {
 
       // ── Eraser: proximity-based detection for drawing paths ──
       if (globalPenTool === 'eraser') {
-        const clickX = e.clientX;
-        const clickY = e.clientY;
+        const coords = getCoordinates(e);
+        const clickX = coords.x;
+        const clickY = coords.y;
 
         // Check highlight regions first (they're rendered as rects in the SVG)
         for (let i = highlightRegions.length - 1; i >= 0; i--) {
@@ -317,30 +342,33 @@ export function GlobalAnnotationOverlay() {
       setDragNote(noteId);
       const note = stickyNotes.find((n) => n.id === noteId);
       if (note) {
+        const coords = getCoordinates(e);
         setDragOffset({
-          x: e.clientX - note.x,
-          y: e.clientY - note.y,
+          x: coords.x - note.x,
+          y: coords.y - note.y,
         });
       }
     },
-    [globalPenTool, stickyNotes]
+    [globalPenTool, stickyNotes, getCoordinates]
   );
 
   const handleNoteMouseMove = useCallback(
     (e: ReactMouseEvent) => {
       if (!dragNote) return;
-      const x = e.clientX - dragOffset.x;
-      const y = e.clientY - dragOffset.y;
+      const coords = getCoordinates(e);
+      const x = coords.x - dragOffset.x;
+      const y = coords.y - dragOffset.y;
       updateStickyNote(dragNote, { x, y });
     },
-    [dragNote, dragOffset, updateStickyNote]
+    [dragNote, dragOffset, updateStickyNote, getCoordinates]
   );
 
   useEffect(() => {
     if (!dragNote) return;
     const handleMove = (e: globalThis.MouseEvent) => {
-      const x = e.clientX - dragOffset.x;
-      const y = e.clientY - dragOffset.y;
+      const coords = getCoordinates(e);
+      const x = coords.x - dragOffset.x;
+      const y = coords.y - dragOffset.y;
       updateStickyNote(dragNote, { x, y });
     };
     const handleUp = () => setDragNote(null);
@@ -373,10 +401,8 @@ export function GlobalAnnotationOverlay() {
     }
   })();
 
-  // ─── Don't render when inactive ──────────────────────────────────
+  // ─── Don't render when pen tool not activated ───────────────────
   if (!globalPenActive) return null;
-
-  const totalAnnotations = stickyNotes.length + highlightRegions.length + drawingPaths.length;
 
   // ─── Tool hint text ──────────────────────────────────────────────
   const toolHintText = (() => {
@@ -397,12 +423,11 @@ export function GlobalAnnotationOverlay() {
           ═══════════════════════════════════════════════════════════════ */}
       <svg
         ref={svgRef}
-        width={viewport.w}
-        height={viewport.h}
-        className="fixed top-0 left-0 z-[9999]"
+        className="absolute inset-0 w-full h-full z-[9999]"
         style={{
           cursor: overlayCursor,
           pointerEvents: overlayCapturesPointer ? 'auto' : 'none',
+          minHeight: '100%',
         }}
         onClick={handleOverlayClick}
         onMouseDown={handlePointerDown}
@@ -531,7 +556,7 @@ export function GlobalAnnotationOverlay() {
               left: note.x,
               top: note.y,
               backgroundColor: colorSet.bg,
-              borderColor: globalPenTool === 'eraser' ? '#da3633' : colorSet.border,
+              borderColor: globalPenTool === 'eraser' ? 'var(--color-sb-wrong)' : colorSet.border,
               cursor: globalPenTool === 'eraser' ? 'pointer' : dragNote === note.id ? 'grabbing' : 'grab',
             }}
             onMouseDown={(e) => {
@@ -601,8 +626,8 @@ export function GlobalAnnotationOverlay() {
         className={cn(
           'fixed left-16 top-14 z-[10002]',
           'flex flex-col items-center',
-          'bg-[#0d1117]/90 backdrop-blur-xl',
-          'border-r border-t border-b border-[#30363d]/70',
+          'bg-sb-bg/90 backdrop-blur-xl',
+          'border-r border-t border-b border-sb-border/70',
           'rounded-r-xl',
           'shadow-2xl shadow-black/40',
           'transition-all duration-200',
@@ -620,7 +645,7 @@ export function GlobalAnnotationOverlay() {
             onClick={() => setGlobalPenTool('pen')}
             icon={<Pencil className="h-4 w-4" />}
             label="Pen"
-            activeColor="#f0a500"
+            activeColor="var(--color-sb-accent)"
           />
 
           {/* Text Highlight */}
@@ -637,7 +662,7 @@ export function GlobalAnnotationOverlay() {
               </span>
             }
             label="Text HL"
-            activeColor="#f0a500"
+            activeColor="var(--color-sb-accent)"
           />
 
           {/* Free Highlight */}
@@ -646,7 +671,7 @@ export function GlobalAnnotationOverlay() {
             onClick={() => setGlobalPenTool('highlight-free')}
             icon={<Highlighter className="h-4 w-4" />}
             label="Free HL"
-            activeColor="#f0a500"
+            activeColor="var(--color-sb-accent)"
           />
 
           {/* Sticky Note */}
@@ -655,7 +680,7 @@ export function GlobalAnnotationOverlay() {
             onClick={() => setGlobalPenTool('sticky')}
             icon={<StickyNote className="h-4 w-4" />}
             label="Sticky"
-            activeColor="#f0a500"
+            activeColor="var(--color-sb-accent)"
           />
 
           {/* Eraser */}
@@ -664,15 +689,15 @@ export function GlobalAnnotationOverlay() {
             onClick={() => setGlobalPenTool('eraser')}
             icon={<Eraser className="h-4 w-4" />}
             label="Eraser"
-            activeColor="#da3633"
+            activeColor="var(--color-sb-wrong)"
           />
         </div>
 
         {/* ── Divider ── */}
-        <div className="w-6 h-px bg-[#30363d]/60 my-1" />
+        <div className="w-6 h-px bg-sb-border/60 my-1" />
 
         {/* ── Annotation Count ── */}
-        <span className="text-[9px] text-[#f0a500] bg-[#f0a500]/10 px-1.5 py-0.5 rounded-full font-medium leading-none">
+        <span className="text-[9px] text-sb-accent bg-sb-accent/10 px-1.5 py-0.5 rounded-full font-medium leading-none">
           {totalAnnotations}
         </span>
 
@@ -681,7 +706,7 @@ export function GlobalAnnotationOverlay() {
 
         {/* ── Clear All ── */}
         <button
-          className="flex items-center justify-center h-8 w-8 rounded-lg text-[#8b949e] hover:text-[#da3633] hover:bg-[#da3633]/10 transition-colors shrink-0"
+          className="flex items-center justify-center h-8 w-8 rounded-lg text-sb-muted hover:text-sb-wrong hover:bg-sb-wrong/10 transition-colors shrink-0"
           onClick={() => clearAllAnnotations()}
           title="Clear All Annotations"
         >
@@ -690,7 +715,7 @@ export function GlobalAnnotationOverlay() {
 
         {/* ── Close ── */}
         <button
-          className="flex items-center justify-center h-8 w-8 rounded-lg text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330] transition-colors shrink-0"
+          className="flex items-center justify-center h-8 w-8 rounded-lg text-sb-muted hover:text-sb-text hover:bg-sb-surface2 transition-colors shrink-0"
           onClick={() => {
             setGlobalPenActive(false);
             setGlobalPenTool('pen');
@@ -709,8 +734,8 @@ export function GlobalAnnotationOverlay() {
           className={cn(
             'fixed left-16 z-[10002]',
             'flex flex-col items-start',
-            'bg-[#0d1117]/90 backdrop-blur-xl',
-            'border border-[#30363d]/70',
+            'bg-sb-bg/90 backdrop-blur-xl',
+            'border border-sb-border/70',
             'rounded-xl',
             'shadow-2xl shadow-black/40',
             'px-3 py-2',
@@ -785,7 +810,7 @@ export function GlobalAnnotationOverlay() {
                 step={1}
                 className="w-20"
               />
-              <span className="text-[10px] text-[#8b949e] font-mono w-8 text-right shrink-0">
+              <span className="text-[10px] text-sb-muted font-mono w-8 text-right shrink-0">
                 {globalPenTool === 'highlight-free'
                   ? `${freeHighlightWidth(drawingBrushSize)}px`
                   : `${drawingBrushSize}px`}
@@ -799,7 +824,7 @@ export function GlobalAnnotationOverlay() {
           TOOL HINT — appears to the right of the toolbar
           ═══════════════════════════════════════════════════════════════ */}
       <div className="fixed left-16 z-[10002]" style={{ top: 'calc(3.5rem + 100px)' }}>
-        <p className="text-[11px] text-[#8b949e]/70 bg-[#0d1117]/60 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-[#30363d]/30 whitespace-nowrap max-w-[220px]">
+        <p className="text-[11px] text-sb-muted/70 bg-sb-bg/60 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-sb-border/30 whitespace-nowrap max-w-[220px]">
           {toolHintText}
         </p>
       </div>
@@ -817,18 +842,23 @@ interface SideToolButtonProps {
   activeColor?: string;
 }
 
-function SideToolButton({ active, onClick, icon, label, activeColor = '#f0a500' }: SideToolButtonProps) {
+function SideToolButton({ active, onClick, icon, label, activeColor = 'var(--color-sb-accent)' }: SideToolButtonProps) {
   return (
     <button
       className={cn(
         'flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-150 relative group',
         active
           ? 'text-white shadow-sm'
-          : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+          : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
       )}
       style={
         active
-          ? { backgroundColor: `${activeColor}20`, color: activeColor }
+          ? { 
+              backgroundColor: activeColor.startsWith('var') 
+                ? `color-mix(in srgb, ${activeColor}, transparent 80%)` 
+                : `${activeColor}33`, 
+              color: activeColor 
+            }
           : undefined
       }
       onClick={onClick}
@@ -836,7 +866,7 @@ function SideToolButton({ active, onClick, icon, label, activeColor = '#f0a500' 
     >
       {icon}
       {/* Tooltip on hover */}
-      <span className="absolute left-full ml-2 px-2 py-1 text-[10px] rounded-md bg-[#1c2330] text-[#e6edf3] border border-[#30363d] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50">
+      <span className="absolute left-full ml-2 px-2 py-1 text-[10px] rounded-md bg-sb-surface2 text-sb-text border border-sb-border opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50">
         {label}
       </span>
     </button>
@@ -856,7 +886,7 @@ function ColorDot({ color, active, onClick, border }: ColorDotProps) {
       className={cn(
         'shrink-0 rounded-full transition-all duration-150',
         active
-          ? 'h-5 w-5 ring-2 ring-white/80 ring-offset-1 ring-offset-[#0d1117] scale-110'
+          ? 'h-5 w-5 ring-2 ring-white/80 ring-offset-1 ring-offset-[var(--color-sb-bg)] scale-110'
           : 'h-4 w-4 hover:scale-125'
       )}
       style={{

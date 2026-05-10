@@ -56,22 +56,22 @@ export function MedLibrary() {
     <div className="space-y-6">
       {/* ─── Header ──────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <div className="h-8 w-1 rounded-full bg-[#f0a500]" />
+        <div className="h-8 w-1 rounded-full bg-sb-accent" />
         <div>
-          <h2 className="text-xl font-bold text-[#e6edf3] serif-title">MedLibrary</h2>
-          <p className="text-xs text-[#8b949e] mt-0.5">Curated medical syntheses — browse &amp; contribute</p>
+          <h2 className="text-xl font-bold text-sb-text serif-title">MedLibrary</h2>
+          <p className="text-xs text-sb-muted mt-0.5">Curated medical syntheses — browse &amp; contribute</p>
         </div>
-        <Library className="h-5 w-5 text-[#f0a500] ml-auto" />
+        <Library className="h-5 w-5 text-sb-accent ml-auto" />
       </div>
 
       {/* ─── Search ──────────────────────────────────────────────── */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8b949e]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sb-muted" />
         <Input
           placeholder="Search library by title, specialty, or tags..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-10 pl-10 bg-[#161b22] border-[#30363d] text-[#e6edf3] placeholder:text-[#8b949e] rounded-xl"
+          className="h-10 pl-10 bg-sb-surface border-sb-border text-sb-text placeholder:text-sb-muted rounded-xl"
         />
       </div>
 
@@ -85,14 +85,14 @@ export function MedLibrary() {
             transition={{ delay: idx * 0.05 }}
             className="hover-lift"
           >
-            <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-5 space-y-3 group">
+            <div className="rounded-2xl border border-sb-border bg-sb-surface p-5 space-y-3 group">
               {/* Category badge + read time */}
               <div className="flex items-center justify-between">
                 <Badge
                   variant="outline"
                   className={cn(
                     'text-[10px] border',
-                    SPECIALTY_COLORS[note.specialty] || 'bg-[#1c2330] text-[#8b949e] border-[#30363d]'
+                    SPECIALTY_COLORS[note.specialty] || 'bg-sb-surface2 text-sb-muted border-sb-border'
                   )}
                 >
                   {SPECIALTY_ICONS[note.specialty] && (
@@ -100,19 +100,19 @@ export function MedLibrary() {
                   )}
                   {note.specialty}
                 </Badge>
-                <div className="flex items-center gap-1 text-[10px] text-[#8b949e]">
+                <div className="flex items-center gap-1 text-[10px] text-sb-muted">
                   <Clock className="h-3 w-3" />
                   ~{Math.max(3, note.sections.length * 2)} min
                 </div>
               </div>
 
               {/* Title */}
-              <h3 className="text-sm font-bold text-[#e6edf3] group-hover:text-[#f0a500] transition-colors serif-title leading-snug">
+              <h3 className="text-sm font-bold text-sb-text group-hover:text-sb-accent transition-colors serif-title leading-snug">
                 {note.title}
               </h3>
 
               {/* Summary */}
-              <p className="text-xs text-[#8b949e] line-clamp-2 leading-relaxed">
+              <p className="text-xs text-sb-muted line-clamp-2 leading-relaxed">
                 {note.summary}
               </p>
 
@@ -122,7 +122,7 @@ export function MedLibrary() {
                   <Badge
                     key={tag}
                     variant="outline"
-                    className="text-[9px] border-[#30363d] text-[#8b949e] bg-[#1c2330] h-5 px-1.5"
+                    className="text-[9px] border-sb-border text-sb-muted bg-sb-surface2 h-5 px-1.5"
                   >
                     {tag}
                   </Badge>
@@ -130,7 +130,7 @@ export function MedLibrary() {
                 {note.tags.length > 3 && (
                   <Badge
                     variant="outline"
-                    className="text-[9px] border-[#30363d] text-[#8b949e] bg-[#1c2330] h-5 px-1.5"
+                    className="text-[9px] border-sb-border text-sb-muted bg-sb-surface2 h-5 px-1.5"
                   >
                     +{note.tags.length - 3}
                   </Badge>
@@ -141,7 +141,7 @@ export function MedLibrary() {
               <Button
                 size="sm"
                 onClick={() => handleOpenNote(note.id)}
-                className="w-full bg-[#f0a500]/10 text-[#f0a500] border border-[#f0a500]/20 hover:bg-[#f0a500]/20 rounded-xl h-8 text-xs font-medium"
+                className="w-full bg-sb-accent/10 text-sb-accent border border-sb-accent/20 hover:bg-sb-accent/20 rounded-xl h-8 text-xs font-medium"
                 variant="outline"
               >
                 Open Synthesis
@@ -159,9 +159,9 @@ export function MedLibrary() {
         >
           <button
             onClick={() => setNewNoteModalOpen(true)}
-            className="w-full h-full min-h-[240px] rounded-2xl border-2 border-dashed border-[#30363d] bg-[#161b22]/30 flex flex-col items-center justify-center gap-3 text-[#8b949e] hover:border-[#f0a500]/40 hover:text-[#f0a500] transition-all duration-200 p-5"
+            className="w-full h-full min-h-[240px] rounded-2xl border-2 border-dashed border-sb-border bg-sb-surface/30 flex flex-col items-center justify-center gap-3 text-sb-muted hover:border-sb-accent/40 hover:text-sb-accent transition-all duration-200 p-5"
           >
-            <div className="w-12 h-12 rounded-full bg-[#1c2330] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-sb-surface2 flex items-center justify-center">
               <Plus className="h-6 w-6" />
             </div>
             <div className="text-center">

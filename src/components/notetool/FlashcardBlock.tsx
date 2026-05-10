@@ -95,7 +95,7 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
             )}
           >
             {/* ─── FRONT SIDE ──────────────────────────────────────────── */}
-            <div className="flashcard-front rounded-xl border-2 border-violet-600/40 bg-[#161b22] p-6 flex flex-col justify-between">
+            <div className="flashcard-front rounded-xl border-2 border-violet-600/40 bg-[var(--color-sb-surface)] p-6 flex flex-col justify-between">
               {/* Top: Badge + Tags */}
               <div className="flex items-start justify-between gap-2">
                 <Badge
@@ -114,7 +114,7 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
                     <Badge
                       key={tag}
                       variant="outline"
-                      className="text-[9px] border-[#30363d] text-[#8b949e] bg-[#1c2330]"
+                      className="text-[9px] border-[var(--color-sb-border)] text-[var(--color-sb-muted)] bg-[var(--color-sb-surface2)]"
                     >
                       <Tag className="h-2.5 w-2.5 mr-0.5" />
                       {tag}
@@ -125,19 +125,19 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
 
               {/* Center: Question */}
               <div className="flex-1 flex items-center justify-center py-4">
-                <p className="text-sm leading-relaxed text-[#e6edf3] text-center">
+                <p className="text-sm leading-relaxed text-[var(--color-sb-text)] text-center">
                   {currentCard.front}
                 </p>
               </div>
 
               {/* Bottom: Hint */}
-              <div className="text-[10px] text-[#8b949e] text-center">
+              <div className="text-[10px] text-[var(--color-sb-muted)] text-center">
                 Click to reveal answer
               </div>
             </div>
 
             {/* ─── BACK SIDE ────────────────────────────────────────────── */}
-            <div className="flashcard-back rounded-xl border-2 border-emerald-600/40 bg-[#161b22] p-6 flex flex-col justify-between">
+            <div className="flashcard-back rounded-xl border-2 border-emerald-600/40 bg-[var(--color-sb-surface)] p-6 flex flex-col justify-between">
               {/* Top: Badge */}
               <div className="flex items-start justify-between gap-2">
                 <Badge
@@ -151,7 +151,7 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
                     <Badge
                       key={tag}
                       variant="outline"
-                      className="text-[9px] border-[#30363d] text-[#8b949e] bg-[#1c2330]"
+                      className="text-[9px] border-[var(--color-sb-border)] text-[var(--color-sb-muted)] bg-[var(--color-sb-surface2)]"
                     >
                       <Tag className="h-2.5 w-2.5 mr-0.5" />
                       {tag}
@@ -168,7 +168,7 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
               </div>
 
               {/* Bottom: Hint */}
-              <div className="text-[10px] text-[#8b949e] text-center">
+              <div className="text-[10px] text-[var(--color-sb-muted)] text-center">
                 Click to flip back
               </div>
             </div>
@@ -184,17 +184,17 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
               e.stopPropagation();
               goToPrev();
             }}
-            className="h-8 w-8 border-[#30363d] bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3] hover:border-violet-500/40"
+            className="h-8 w-8 border-[var(--color-sb-border)] bg-[var(--color-sb-surface)] text-[var(--color-sb-muted)] hover:text-[var(--color-sb-text)] hover:border-violet-500/40"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-[#8b949e]">
+            <span className="text-xs font-mono text-[var(--color-sb-muted)]">
               {currentCardIndex + 1}
             </span>
-            <span className="text-[10px] text-[#30363d]">/</span>
-            <span className="text-xs font-mono text-[#8b949e]">
+            <span className="text-[10px] text-[var(--color-sb-border)]">/</span>
+            <span className="text-xs font-mono text-[var(--color-sb-muted)]">
               {cards.length}
             </span>
           </div>
@@ -206,7 +206,7 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
               e.stopPropagation();
               goToNext();
             }}
-            className="h-8 w-8 border-[#30363d] bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3] hover:border-violet-500/40"
+            className="h-8 w-8 border-[var(--color-sb-border)] bg-[var(--color-sb-surface)] text-[var(--color-sb-muted)] hover:text-[var(--color-sb-text)] hover:border-violet-500/40"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -225,7 +225,7 @@ export function FlashcardBlock({ cards, mode }: FlashcardBlockProps) {
                 'h-8 px-2 rounded-md border text-[10px] font-mono transition-all',
                 idx === currentCardIndex
                   ? 'border-violet-500/60 bg-violet-600/15 text-violet-400'
-                  : 'border-[#30363d] bg-[#161b22] text-[#8b949e] hover:border-[#8b949e]'
+                  : 'border-[var(--color-sb-border)] bg-[var(--color-sb-surface)] text-[var(--color-sb-muted)] hover:border-[var(--color-sb-muted)]'
               )}
             >
               {idx + 1}

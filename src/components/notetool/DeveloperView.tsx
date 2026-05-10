@@ -27,6 +27,9 @@ import {
   Layers,
   GitBranch,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { MermaidMakerGUI } from './MermaidMakerGUI';
+import ReactMarkdown from 'react-markdown';
 
 interface DeveloperViewProps {
   initialContent: string;
@@ -54,48 +57,48 @@ const TEXT_TOOLS: ToolbarTool[] = [
     label: 'Bold',
     icon: <Bold className="h-3.5 w-3.5" />,
     type: 'wrap',
-    openTag: '<strong>',
-    closeTag: '</strong>',
+    openTag: '**',
+    closeTag: '**',
   },
   {
     id: 'italic',
     label: 'Italic',
     icon: <Italic className="h-3.5 w-3.5" />,
     type: 'wrap',
-    openTag: '<em>',
-    closeTag: '</em>',
+    openTag: '_',
+    closeTag: '_',
   },
   {
     id: 'heading',
     label: 'Heading',
     icon: <Heading2 className="h-3.5 w-3.5" />,
     type: 'wrap',
-    openTag: '<h2>',
-    closeTag: '</h2>',
+    openTag: '## ',
+    closeTag: '',
   },
   {
     id: 'list',
     label: 'List',
     icon: <List className="h-3.5 w-3.5" />,
     type: 'wrap',
-    openTag: '<ul>\n  <li>',
-    closeTag: '</li>\n</ul>',
+    openTag: '- ',
+    closeTag: '',
   },
   {
     id: 'code',
     label: 'Code',
     icon: <Code className="h-3.5 w-3.5" />,
     type: 'wrap',
-    openTag: '<code>',
-    closeTag: '</code>',
+    openTag: '`',
+    closeTag: '`',
   },
   {
     id: 'link',
     label: 'Link',
     icon: <Link className="h-3.5 w-3.5" />,
     type: 'wrap',
-    openTag: '<a href="">',
-    closeTag: '</a>',
+    openTag: '[',
+    closeTag: '](url)',
   },
 ];
 
@@ -107,22 +110,22 @@ const INSERT_TOOLS: ToolbarTool[] = [
     type: 'insert',
     template: `<table style="width: 100%; border-collapse: collapse;">
   <thead>
-    <tr style="background: #222a36;">
-      <th style="padding: 8px; text-align: left; color: #f0a500; border: 1px solid #30363d;">Header 1</th>
-      <th style="padding: 8px; text-align: left; color: #f0a500; border: 1px solid #30363d;">Header 2</th>
-      <th style="padding: 8px; text-align: left; color: #f0a500; border: 1px solid #30363d;">Header 3</th>
+    <tr style="background: var(--color-sb-surface3);">
+      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Header 1</th>
+      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Header 2</th>
+      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Header 3</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Cell 1</td>
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Cell 2</td>
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Cell 3</td>
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 1</td>
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 2</td>
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 3</td>
     </tr>
-    <tr style="background: #1c2330;">
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Cell 4</td>
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Cell 5</td>
-      <td style="padding: 8px; color: #8b949e; border: 1px solid #30363d;">Cell 6</td>
+    <tr style="background: var(--color-sb-surface2);">
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 4</td>
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 5</td>
+      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 6</td>
     </tr>
   </tbody>
 </table>`,
@@ -132,18 +135,18 @@ const INSERT_TOOLS: ToolbarTool[] = [
     label: 'MCQ',
     icon: <HelpCircle className="h-3.5 w-3.5" />,
     type: 'insert',
-    template: `<div class="mcq-block" style="background: #1c2330; border: 1px solid #f0a500; border-radius: 12px; padding: 16px; margin: 12px 0;">
-  <p style="color: #f0a500; font-weight: 600; margin-bottom: 12px;">Question:</p>
-  <p style="color: #e6edf3; margin-bottom: 12px;">Your question here?</p>
+    template: `<div class="mcq-block" style="background: var(--color-sb-surface2); border: 1px solid var(--color-sb-accent); border-radius: 12px; padding: 16px; margin: 12px 0;">
+  <p style="color: var(--color-sb-accent); font-weight: 600; margin-bottom: 12px;">Question:</p>
+  <p style="color: var(--color-sb-text); margin-bottom: 12px;">Your question here?</p>
   <ul style="list-style: none; padding: 0; margin: 0;">
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: #0d1117; border: 1px solid #30363d; color: #8b949e;">A. Option 1</li>
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: #0d1117; border: 1px solid #30363d; color: #8b949e;">B. Option 2</li>
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: #0d1117; border: 1px solid #30363d; color: #8b949e;">C. Option 3</li>
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: #0d1117; border: 1px solid #30363d; color: #8b949e;">D. Option 4</li>
+    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">A. Option 1</li>
+    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">B. Option 2</li>
+    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">C. Option 3</li>
+    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">D. Option 4</li>
   </ul>
   <details style="margin-top: 12px;">
-    <summary style="color: #f0a500; cursor: pointer; font-size: 0.85em;">Show Answer</summary>
-    <p style="color: #3fb950; margin-top: 8px; padding: 8px; background: #0d1117; border-radius: 8px;">Correct answer and explanation here.</p>
+    <summary style="color: var(--color-sb-accent); cursor: pointer; font-size: 0.85em;">Show Answer</summary>
+    <p style="color: #3fb950; margin-top: 8px; padding: 8px; background: var(--color-sb-bg); border-radius: 8px;">Correct answer and explanation here.</p>
   </details>
 </div>`,
   },
@@ -155,10 +158,10 @@ const INSERT_TOOLS: ToolbarTool[] = [
     template: `<div class="flashcard" style="perspective: 1000px; margin: 12px 0;">
   <div style="position: relative; width: 100%; min-height: 120px; transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer;"
        onclick="this.style.transform = this.style.transform === 'rotateY(180deg)' ? '' : 'rotateY(180deg)'">
-    <div style="backface-visibility: hidden; position: absolute; inset: 0; background: #1c2330; border: 2px solid #8b5cf6; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center;">
-      <p style="color: #e6edf3; text-align: center; font-size: 1.1em;">Front: Your question or prompt</p>
+    <div style="backface-visibility: hidden; position: absolute; inset: 0; background: var(--color-sb-surface2); border: 2px solid #8b5cf6; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center;">
+      <p style="color: var(--color-sb-text); text-align: center; font-size: 1.1em;">Front: Your question or prompt</p>
     </div>
-    <div style="backface-visibility: hidden; transform: rotateY(180deg); position: absolute; inset: 0; background: #1c2330; border: 2px solid #3fb950; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center;">
+    <div style="backface-visibility: hidden; transform: rotateY(180deg); position: absolute; inset: 0; background: var(--color-sb-surface2); border: 2px solid #3fb950; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center;">
       <p style="color: #3fb950; text-align: center; font-size: 1.1em;">Back: Your answer</p>
     </div>
   </div>
@@ -169,9 +172,9 @@ const INSERT_TOOLS: ToolbarTool[] = [
     label: 'Mermaid',
     icon: <GitBranch className="h-3.5 w-3.5" />,
     type: 'insert',
-    template: `<div class="mermaid-diagram" style="background: #1c2330; border: 1px solid #22d3ee; border-radius: 12px; padding: 16px; margin: 12px 0;">
+    template: `<div class="mermaid-diagram" style="background: var(--color-sb-surface2); border: 1px solid #22d3ee; border-radius: 12px; padding: 16px; margin: 12px 0;">
   <p style="color: #22d3ee; font-weight: 600; margin-bottom: 8px;">Mermaid Diagram</p>
-  <pre class="mermaid" style="background: #0d1117; border-radius: 8px; padding: 12px; color: #8b949e;">
+  <pre class="mermaid" style="background: var(--color-sb-bg); border-radius: 8px; padding: 12px; color: var(--color-sb-muted);">
 graph TD
     A[Start] --> B{Decision}
     B -->|Yes| C[Action 1]
@@ -186,6 +189,7 @@ graph TD
 export function DeveloperView({ initialContent, onContentChange }: DeveloperViewProps) {
   const [code, setCode] = useState(initialContent);
   const [preview, setPreview] = useState(initialContent);
+  const [isMermaidMakerOpen, setIsMermaidMakerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -203,6 +207,10 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
 
   // ─── Handle toolbar actions ───────────────────────────────────────
   const handleToolClick = useCallback((tool: ToolbarTool) => {
+    if (tool.id === 'mermaid') {
+      setIsMermaidMakerOpen(true);
+      return;
+    }
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -251,6 +259,17 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
       }
     });
   }, [code]);
+
+  const handleMermaidSave = (htmlBlock: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const beforeSelection = code.substring(0, start);
+    const afterSelection = code.substring(textarea.selectionEnd);
+    const newCode = beforeSelection + `\n${htmlBlock}\n` + afterSelection;
+    setCode(newCode);
+    setIsMermaidMakerOpen(false);
+  };
 
   return (
     <div className="h-full rounded-lg border border-violet-800/30 overflow-hidden flex flex-col">
@@ -334,12 +353,24 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
               </div>
               <div
                 className="flex-1 overflow-auto p-4 prose prose-sm prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: preview }}
-              />
+                style={{ color: 'var(--color-sb-text)' }}
+              >
+                <ReactMarkdown>{code}</ReactMarkdown>
+              </div>
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      <Dialog open={isMermaidMakerOpen} onOpenChange={setIsMermaidMakerOpen}>
+        <DialogContent className="max-w-[900px] p-0 border-none bg-transparent">
+          <DialogTitle className="sr-only">Visual Mermaid Maker</DialogTitle>
+          <MermaidMakerGUI 
+            onSave={handleMermaidSave} 
+            onCancel={() => setIsMermaidMakerOpen(false)} 
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

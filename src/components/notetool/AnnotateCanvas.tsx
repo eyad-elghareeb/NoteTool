@@ -24,7 +24,7 @@ import {
 } from '@/stores/notetool-store';
 
 const HIGHLIGHT_COLORS = [
-  { id: 'amber', color: '#f0a500', label: 'Amber' },
+  { id: 'amber', color: 'var(--color-sb-accent)', label: 'Amber' },
   { id: 'yellow', color: '#fbbf24', label: 'Yellow' },
   { id: 'green', color: '#34d399', label: 'Green' },
   { id: 'cyan', color: '#22d3ee', label: 'Cyan' },
@@ -41,7 +41,7 @@ const STICKY_COLORS = [
 ];
 
 const DRAW_COLORS = [
-  { id: 'amber', color: '#f0a500' },
+  { id: 'amber', color: 'var(--color-sb-accent)' },
   { id: 'red', color: '#ef4444' },
   { id: 'green', color: '#22c55e' },
   { id: 'cyan', color: '#06b6d4' },
@@ -341,14 +341,14 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
         className={cn(
           'relative z-10 mb-4 rounded-2xl border',
           'glass-strong',
-          'border-[#30363d]/60',
+          'border-sb-border/60',
           'p-3 shadow-lg shadow-black/30',
           'annotate-toolbar-active'
         )}
       >
         <div className="flex items-center gap-2 flex-wrap">
           {/* Tool Buttons */}
-          <div className="flex items-center gap-1 rounded-xl bg-[#0d1117]/80 p-1">
+          <div className="flex items-center gap-1 rounded-xl bg-sb-bg/80 p-1">
             {/* Highlight */}
             <Button
               variant="ghost"
@@ -356,8 +356,8 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
               className={cn(
                 'gap-1.5 text-xs h-8 px-3 rounded-md',
                 annotateTool === 'highlight'
-                  ? 'bg-[#f0a500]/20 text-[#f0a500]'
-                  : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                  ? 'bg-sb-accent/20 text-sb-accent'
+                  : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
               )}
               onClick={() => {
                 setAnnotateTool(annotateTool === 'highlight' ? null : 'highlight');
@@ -375,8 +375,8 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
               className={cn(
                 'gap-1.5 text-xs h-8 px-3 rounded-md',
                 annotateTool === 'sticky'
-                  ? 'bg-[#f0a500]/20 text-[#f0a500]'
-                  : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                  ? 'bg-sb-accent/20 text-sb-accent'
+                  : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
               )}
               onClick={() => {
                 setAnnotateTool(annotateTool === 'sticky' ? null : 'sticky');
@@ -394,8 +394,8 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
               className={cn(
                 'gap-1.5 text-xs h-8 px-3 rounded-md',
                 annotateTool === 'drawing'
-                  ? 'bg-[#f0a500]/20 text-[#f0a500]'
-                  : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                  ? 'bg-sb-accent/20 text-sb-accent'
+                  : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
               )}
               onClick={() => {
                 setAnnotateTool(annotateTool === 'drawing' ? null : 'drawing');
@@ -413,8 +413,8 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
               className={cn(
                 'gap-1.5 text-xs h-8 px-3 rounded-md',
                 annotateTool === 'eraser'
-                  ? 'bg-[#da3633]/20 text-[#da3633]'
-                  : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2330]'
+                  ? 'bg-sb-wrong/20 text-sb-wrong'
+                  : 'text-sb-muted hover:text-sb-text hover:bg-sb-surface2'
               )}
               onClick={() => {
                 setAnnotateTool(annotateTool === 'eraser' ? null : 'eraser');
@@ -426,12 +426,12 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
             </Button>
           </div>
 
-          <Separator orientation="vertical" className="h-6 bg-[#30363d]" />
+          <Separator orientation="vertical" className="h-6 bg-sb-border" />
 
           {/* Color Picker Area */}
           {showColorPicker === 'highlight' && (
             <div className="flex items-center gap-1.5 px-2">
-              <Palette className="h-3.5 w-3.5 text-[#8b949e]" />
+              <Palette className="h-3.5 w-3.5 text-sb-muted" />
               {HIGHLIGHT_COLORS.map((c) => (
                 <button
                   key={c.id}
@@ -449,7 +449,7 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
 
           {showColorPicker === 'sticky' && (
             <div className="flex items-center gap-1.5 px-2">
-              <Palette className="h-3.5 w-3.5 text-[#8b949e]" />
+              <Palette className="h-3.5 w-3.5 text-sb-muted" />
               {STICKY_COLORS.map((c) => (
                 <button
                   key={c.id}
@@ -467,7 +467,7 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
 
           {showColorPicker === 'drawing' && (
             <div className="flex items-center gap-2 px-2">
-              <Palette className="h-3.5 w-3.5 text-[#8b949e]" />
+              <Palette className="h-3.5 w-3.5 text-sb-muted" />
               {DRAW_COLORS.map((c) => (
                 <button
                   key={c.id}
@@ -480,23 +480,23 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
                   title={c.id}
                 />
               ))}
-              <Separator orientation="vertical" className="h-4 bg-[#30363d]" />
+              <Separator orientation="vertical" className="h-4 bg-sb-border" />
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-[#8b949e]"
+                  className="h-6 w-6 text-sb-muted"
                   onClick={() => setDrawingBrushSize(Math.max(1, drawingBrushSize - 1))}
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
-                <span className="text-[10px] text-[#8b949e] w-6 text-center font-mono">
+                <span className="text-[10px] text-sb-muted w-6 text-center font-mono">
                   {drawingBrushSize}px
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-[#8b949e]"
+                  className="h-6 w-6 text-sb-muted"
                   onClick={() => setDrawingBrushSize(Math.min(20, drawingBrushSize + 1))}
                 >
                   <Plus className="h-3 w-3" />
@@ -510,7 +510,7 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
           {/* Annotation Count */}
           <Badge
             variant="outline"
-            className="text-[10px] border-[#30363d] text-[#f0a500] bg-[#f0a500]/10"
+            className="text-[10px] border-sb-border text-sb-accent bg-sb-accent/10"
           >
             {totalAnnotations} annotation{totalAnnotations !== 1 ? 's' : ''}
           </Badge>
@@ -519,7 +519,7 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 text-xs h-8 text-[#da3633] hover:text-[#f87171] hover:bg-[#da3633]/10 rounded-md"
+            className="gap-1.5 text-xs h-8 text-sb-wrong hover:text-[#f87171] hover:bg-sb-wrong/10 rounded-md"
             onClick={() => clearAllAnnotations()}
             title="Clear All Annotations"
           >
@@ -530,8 +530,8 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
 
         {/* Active tool hint */}
         {annotateTool && (
-          <div className="mt-2 pt-2 border-t border-[#30363d]/50">
-            <p className="text-[11px] text-[#8b949e]">
+          <div className="mt-2 pt-2 border-t border-sb-border/50">
+            <p className="text-[11px] text-sb-muted">
               {annotateTool === 'highlight' && '💡 Select text on the page to highlight it'}
               {annotateTool === 'sticky' && '💡 Click anywhere on the page to place a sticky note'}
               {annotateTool === 'drawing' && '💡 Click and drag to draw on top of the content'}
@@ -683,7 +683,7 @@ export function AnnotateCanvas({ children, isActive }: AnnotateCanvasProps) {
                 left: note.x,
                 top: note.y,
                 backgroundColor: colorSet.bg,
-                borderColor: isEraserActive ? '#da3633' : colorSet.border,
+                borderColor: isEraserActive ? 'var(--color-sb-wrong)' : colorSet.border,
                 cursor: isEraserActive ? 'pointer' : undefined,
               }}
               onMouseDown={(e) => handleNoteMouseDown(e, note.id)}

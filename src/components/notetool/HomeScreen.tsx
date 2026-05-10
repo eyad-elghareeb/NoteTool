@@ -42,26 +42,26 @@ export function HomeScreen() {
       {/* ═════════════════════════════════════════════════════════════════
           Welcome Hero Section
           ═════════════════════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-2xl border border-[#30363d]/60 bg-gradient-to-br from-[#0d1117] via-[#161b22] to-[#0d1117] p-8">
+      <div className="relative overflow-hidden rounded-2xl border border-sb-border/60 bg-gradient-to-br from-[var(--color-sb-bg)] via-[var(--color-sb-surface)] to-[var(--color-sb-bg)] p-8">
         {/* Decorative accent */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#f0a500]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#f0a500]/3 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-sb-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-sb-accent/3 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-[#f0a500] flex items-center justify-center shadow-lg shadow-[#f0a500]/20">
-              <Brain className="h-7 w-7 text-[#0d1117]" />
+            <div className="w-12 h-12 rounded-xl bg-sb-accent flex items-center justify-center shadow-lg shadow-[var(--color-sb-accent)]/20">
+              <Brain className="h-7 w-7 text-sb-bg" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-[#e6edf3] tracking-tight">
+              <h1 className="text-3xl font-bold text-sb-text tracking-tight">
                 SurgicalBrain
               </h1>
-              <p className="text-sm text-[#8b949e]">
+              <p className="text-sm text-sb-muted">
                 Dissect · Map · Act · Connect
               </p>
             </div>
           </div>
-          <p className="text-base text-[#8b949e] max-w-xl leading-relaxed">
+          <p className="text-base text-sb-muted max-w-xl leading-relaxed">
             Your medical knowledge synthesis engine. Transform complex clinical information into
             structured, interconnected, and actionable knowledge.
           </p>
@@ -76,7 +76,7 @@ export function HomeScreen() {
           icon={<FileText className="h-5 w-5" />}
           value={notes.length}
           label="Syntheses"
-          color="#f0a500"
+          color="var(--color-sb-accent)"
         />
         <StatCard
           icon={<Activity className="h-5 w-5" />}
@@ -102,8 +102,8 @@ export function HomeScreen() {
           Quick Actions
           ═════════════════════════════════════════════════════════════════ */}
       <div>
-        <h2 className="text-sm font-semibold text-[#e6edf3] mb-3 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[#f0a500]" />
+        <h2 className="text-sm font-semibold text-sb-text mb-3 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-sb-accent" />
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -112,7 +112,7 @@ export function HomeScreen() {
             title="Create New Synthesis"
             description="Start a new medical knowledge synthesis"
             onClick={() => setNewNoteModalOpen(true)}
-            color="#f0a500"
+            color="var(--color-sb-accent)"
           />
           <ActionCard
             icon={<BookOpen className="h-5 w-5" />}
@@ -136,8 +136,8 @@ export function HomeScreen() {
           ═════════════════════════════════════════════════════════════════ */}
       {recentNotes.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-[#e6edf3] mb-3 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[#8b949e]" />
+          <h2 className="text-sm font-semibold text-sb-text mb-3 flex items-center gap-2">
+            <FileText className="h-4 w-4 text-sb-muted" />
             Recent Activity
           </h2>
           <div className="space-y-2">
@@ -148,22 +148,22 @@ export function HomeScreen() {
                   setActiveNoteId(note.id);
                   setActiveView('notes');
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#30363d]/50 bg-[#161b22]/50 hover:bg-[#161b22] hover:border-[#f0a500]/20 transition-all duration-150 text-left group"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-sb-border/50 bg-sb-surface/50 hover:bg-sb-surface hover:border-sb-accent/20 transition-all duration-150 text-left group"
               >
-                <div className="w-9 h-9 rounded-lg bg-[#1c2330] flex items-center justify-center shrink-0 group-hover:bg-[#f0a500]/10 transition-colors">
-                  <FileText className="h-4 w-4 text-[#8b949e] group-hover:text-[#f0a500] transition-colors" />
+                <div className="w-9 h-9 rounded-lg bg-sb-surface2 flex items-center justify-center shrink-0 group-hover:bg-sb-accent/10 transition-colors">
+                  <FileText className="h-4 w-4 text-sb-muted group-hover:text-sb-accent transition-colors" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#e6edf3] truncate group-hover:text-[#f0a500] transition-colors">
+                  <p className="text-sm font-medium text-sb-text truncate group-hover:text-sb-accent transition-colors">
                     {note.title}
                   </p>
-                  <p className="text-xs text-[#8b949e] truncate">{note.specialty} · {note.category}</p>
+                  <p className="text-xs text-sb-muted truncate">{note.specialty} · {note.category}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e]">
+                  <Badge variant="outline" className="text-[9px] border-sb-border text-sb-muted">
                     {note.sections.length} sections
                   </Badge>
-                  <ChevronRight className="h-4 w-4 text-[#30363d] group-hover:text-[#f0a500] transition-colors" />
+                  <ChevronRight className="h-4 w-4 text-sb-border group-hover:text-sb-accent transition-colors" />
                 </div>
               </button>
             ))}
@@ -175,8 +175,8 @@ export function HomeScreen() {
           Getting Started
           ═════════════════════════════════════════════════════════════════ */}
       <div>
-        <h2 className="text-sm font-semibold text-[#e6edf3] mb-3 flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-[#f0a500]" />
+        <h2 className="text-sm font-semibold text-sb-text mb-3 flex items-center gap-2">
+          <Lightbulb className="h-4 w-4 text-sb-accent" />
           Getting Started
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -215,12 +215,12 @@ function StatCard({ icon, value, label, color }: {
   color: string;
 }) {
   return (
-    <div className="rounded-xl border border-[#30363d]/50 bg-[#161b22]/50 p-4">
+    <div className="rounded-xl border border-sb-border/50 bg-sb-surface/50 p-4">
       <div className="flex items-center gap-2 mb-2">
         <span style={{ color }}>{icon}</span>
-        <span className="text-xs text-[#8b949e]">{label}</span>
+        <span className="text-xs text-sb-muted">{label}</span>
       </div>
-      <p className="text-2xl font-bold text-[#e6edf3]">{value}</p>
+      <p className="text-2xl font-bold text-sb-text">{value}</p>
     </div>
   );
 }
@@ -235,7 +235,7 @@ function ActionCard({ icon, title, description, onClick, color }: {
   return (
     <button
       onClick={onClick}
-      className="flex items-start gap-3 p-4 rounded-xl border border-[#30363d]/50 bg-[#161b22]/50 hover:bg-[#161b22] hover:border-[#30363d] transition-all duration-150 text-left group"
+      className="flex items-start gap-3 p-4 rounded-xl border border-sb-border/50 bg-sb-surface/50 hover:bg-sb-surface hover:border-sb-border transition-all duration-150 text-left group"
     >
       <div
         className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors"
@@ -244,8 +244,8 @@ function ActionCard({ icon, title, description, onClick, color }: {
         {icon}
       </div>
       <div>
-        <p className="text-sm font-medium text-[#e6edf3] group-hover:text-[#f0a500] transition-colors">{title}</p>
-        <p className="text-xs text-[#8b949e] mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-sb-text group-hover:text-sb-accent transition-colors">{title}</p>
+        <p className="text-xs text-sb-muted mt-0.5">{description}</p>
       </div>
     </button>
   );
@@ -257,13 +257,13 @@ function TipCard({ step, title, description }: {
   description: string;
 }) {
   return (
-    <div className="flex gap-3 p-4 rounded-xl border border-[#30363d]/50 bg-[#161b22]/50">
-      <div className="w-7 h-7 rounded-full bg-[#f0a500]/10 text-[#f0a500] text-xs font-bold flex items-center justify-center shrink-0">
+    <div className="flex gap-3 p-4 rounded-xl border border-sb-border/50 bg-sb-surface/50">
+      <div className="w-7 h-7 rounded-full bg-sb-accent/10 text-sb-accent text-xs font-bold flex items-center justify-center shrink-0">
         {step}
       </div>
       <div>
-        <p className="text-sm font-medium text-[#e6edf3]">{title}</p>
-        <p className="text-xs text-[#8b949e] mt-1 leading-relaxed">{description}</p>
+        <p className="text-sm font-medium text-sb-text">{title}</p>
+        <p className="text-xs text-sb-muted mt-1 leading-relaxed">{description}</p>
       </div>
     </div>
   );

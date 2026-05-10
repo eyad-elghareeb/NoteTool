@@ -55,7 +55,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-[#0d1117] border border-[#30363d] p-3">
+    <div className="flex items-center gap-3 rounded-xl bg-sb-bg border border-sb-border p-3">
       <div
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
         style={{ backgroundColor: `${color}20` }}
@@ -63,8 +63,8 @@ function StatCard({
         <Icon className="h-4 w-4" style={{ color }} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-[#8b949e] truncate">{label}</p>
-        <p className="text-lg font-semibold text-[#e6edf3] leading-tight">
+        <p className="text-xs text-sb-muted truncate">{label}</p>
+        <p className="text-lg font-semibold text-sb-text leading-tight">
           {value}
         </p>
       </div>
@@ -84,18 +84,18 @@ function IntegrationCard({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl bg-[#0d1117] border border-[#30363d] p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#f0a500]/10">
-        <Icon className="h-5 w-5 text-[#f0a500]" />
+    <div className="flex items-start gap-3 rounded-xl bg-sb-bg border border-sb-border p-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sb-accent/10">
+        <Icon className="h-5 w-5 text-sb-accent" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <h4 className="text-sm font-medium text-[#e6edf3]">{title}</h4>
-          <Badge className="bg-[#f0a500]/15 text-[#f0a500] border-[#f0a500]/30 text-[10px] px-1.5 py-0">
+          <h4 className="text-sm font-medium text-sb-text">{title}</h4>
+          <Badge className="bg-sb-accent/15 text-sb-accent border-sb-accent/30 text-[10px] px-1.5 py-0">
             Coming Soon
           </Badge>
         </div>
-        <p className="mt-1 text-xs text-[#8b949e] leading-relaxed">
+        <p className="mt-1 text-xs text-sb-muted leading-relaxed">
           {description}
         </p>
       </div>
@@ -119,7 +119,6 @@ export function AccountModal() {
     drawingPaths,
     mcqAnswers,
     flashcardStates,
-    dynamicSections,
   } = useNoteToolStore();
 
   const [name, setName] = useState(userProfile.name);
@@ -163,7 +162,6 @@ export function AccountModal() {
       notes,
       mcqAnswers,
       flashcardStates,
-      dynamicSections,
       userProfile,
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -177,7 +175,7 @@ export function AccountModal() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [notes, mcqAnswers, flashcardStates, dynamicSections, userProfile]);
+  }, [notes, mcqAnswers, flashcardStates, userProfile]);
 
   // ─── Import Notes ─────────────────────────────────────────────────────
   const handleImport = useCallback(
@@ -213,10 +211,10 @@ export function AccountModal() {
 
   return (
     <Dialog open={accountModalOpen} onOpenChange={setAccountModalOpen}>
-      <DialogContent className="bg-[#161b22] border-[#30363d] text-[#e6edf3] max-w-lg">
+      <DialogContent className="bg-sb-surface border-sb-border text-sb-text max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-[#e6edf3] flex items-center gap-2 text-lg">
-            <User className="h-5 w-5 text-[#f0a500]" />
+          <DialogTitle className="text-sb-text flex items-center gap-2 text-lg">
+            <User className="h-5 w-5 text-sb-accent" />
             Account
           </DialogTitle>
         </DialogHeader>
@@ -226,24 +224,24 @@ export function AccountModal() {
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="bg-[#0d1117] border border-[#30363d] w-full h-9 p-[3px] rounded-lg">
+          <TabsList className="bg-sb-bg border border-sb-border w-full h-9 p-[3px] rounded-lg">
             <TabsTrigger
               value="profile"
-              className="data-[state=active]:bg-[#f0a500]/15 data-[state=active]:text-[#f0a500] data-[state=active]:border-[#f0a500]/30 text-[#8b949e] text-xs rounded-md transition-colors"
+              className="data-[state=active]:bg-sb-accent/15 data-[state=active]:text-sb-accent data-[state=active]:border-sb-accent/30 text-sb-muted text-xs rounded-md transition-colors"
             >
               <User className="h-3.5 w-3.5" />
               Profile
             </TabsTrigger>
             <TabsTrigger
               value="content"
-              className="data-[state=active]:bg-[#f0a500]/15 data-[state=active]:text-[#f0a500] data-[state=active]:border-[#f0a500]/30 text-[#8b949e] text-xs rounded-md transition-colors"
+              className="data-[state=active]:bg-sb-accent/15 data-[state=active]:text-sb-accent data-[state=active]:border-sb-accent/30 text-sb-muted text-xs rounded-md transition-colors"
             >
               <Layers className="h-3.5 w-3.5" />
               Content
             </TabsTrigger>
             <TabsTrigger
               value="integrations"
-              className="data-[state=active]:bg-[#f0a500]/15 data-[state=active]:text-[#f0a500] data-[state=active]:border-[#f0a500]/30 text-[#8b949e] text-xs rounded-md transition-colors"
+              className="data-[state=active]:bg-sb-accent/15 data-[state=active]:text-sb-accent data-[state=active]:border-sb-accent/30 text-sb-muted text-xs rounded-md transition-colors"
             >
               <Brain className="h-3.5 w-3.5" />
               Integrations
@@ -255,41 +253,41 @@ export function AccountModal() {
             <div className="space-y-4">
               {/* Avatar */}
               <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-[#f0a500] flex items-center justify-center text-[#0d1117] font-bold text-xl shadow-lg shadow-[#f0a500]/20">
+                <div className="w-16 h-16 rounded-full bg-sb-accent flex items-center justify-center text-sb-bg font-bold text-xl shadow-lg shadow-[var(--color-sb-accent)]/20">
                   {initials || 'DR'}
                 </div>
               </div>
 
               {/* Name */}
               <div className="space-y-2">
-                <Label className="text-[#8b949e] text-xs">Name</Label>
+                <Label className="text-sb-muted text-xs">Name</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Dr. Jane Smith"
-                  className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] rounded-xl placeholder:text-[#8b949e]/50"
+                  className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
                 />
               </div>
 
               {/* Specialty */}
               <div className="space-y-2">
-                <Label className="text-[#8b949e] text-xs">Specialty</Label>
+                <Label className="text-sb-muted text-xs">Specialty</Label>
                 <Input
                   value={specialty}
                   onChange={(e) => setSpecialty(e.target.value)}
                   placeholder="Cardiology"
-                  className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] rounded-xl placeholder:text-[#8b949e]/50"
+                  className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
                 />
               </div>
 
               {/* Institution */}
               <div className="space-y-2">
-                <Label className="text-[#8b949e] text-xs">Institution</Label>
+                <Label className="text-sb-muted text-xs">Institution</Label>
                 <Input
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
                   placeholder="General Hospital"
-                  className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] rounded-xl placeholder:text-[#8b949e]/50"
+                  className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
                 />
               </div>
             </div>
@@ -304,7 +302,7 @@ export function AccountModal() {
                   icon={BookOpen}
                   label="Total Notes"
                   value={notes.length}
-                  color="#f0a500"
+                  color="var(--color-sb-accent)"
                 />
                 <StatCard
                   icon={Brain}
@@ -326,13 +324,13 @@ export function AccountModal() {
                 />
               </div>
 
-              <Separator className="bg-[#30363d]" />
+              <Separator className="bg-sb-border" />
 
               {/* Action Buttons */}
               <div className="space-y-2.5">
                 <Button
                   onClick={handleExport}
-                  className="w-full bg-[#0d1117] hover:bg-[#161b22] border border-[#30363d] text-[#e6edf3] rounded-xl h-10 justify-start gap-2.5"
+                  className="w-full bg-sb-bg hover:bg-sb-surface border border-sb-border text-sb-text rounded-xl h-10 justify-start gap-2.5"
                 >
                   <FileDown className="h-4 w-4 text-[#3fb950]" />
                   Export All Notes
@@ -340,7 +338,7 @@ export function AccountModal() {
 
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full bg-[#0d1117] hover:bg-[#161b22] border border-[#30363d] text-[#e6edf3] rounded-xl h-10 justify-start gap-2.5"
+                  className="w-full bg-sb-bg hover:bg-sb-surface border border-sb-border text-sb-text rounded-xl h-10 justify-start gap-2.5"
                 >
                   <FileUp className="h-4 w-4 text-[#58a6ff]" />
                   Import Notes
@@ -356,7 +354,7 @@ export function AccountModal() {
 
                 <Button
                   onClick={() => setClearDialogOpen(true)}
-                  className="w-full bg-[#0d1117] hover:bg-[#161b22] border border-[#30363d] text-[#e6edf3] rounded-xl h-10 justify-start gap-2.5"
+                  className="w-full bg-sb-bg hover:bg-sb-surface border border-sb-border text-sb-text rounded-xl h-10 justify-start gap-2.5"
                 >
                   <Trash2 className="h-4 w-4 text-[#f85149]" />
                   Clear All Data
@@ -389,13 +387,13 @@ export function AccountModal() {
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost" className="text-[#8b949e] rounded-xl">
+            <Button variant="ghost" className="text-sb-muted rounded-xl">
               Cancel
             </Button>
           </DialogClose>
           <Button
             onClick={handleSave}
-            className="bg-[#f0a500] hover:bg-[#d4940a] text-[#0d1117] font-semibold rounded-xl"
+            className="bg-sb-accent hover:bg-[#d4940a] text-sb-bg font-semibold rounded-xl"
           >
             <Save className="h-4 w-4 mr-1.5" />
             Save Profile
@@ -407,24 +405,24 @@ export function AccountModal() {
           open={clearDialogOpen}
           onOpenChange={setClearDialogOpen}
         >
-          <AlertDialogContent className="bg-[#161b22] border-[#30363d] text-[#e6edf3]">
+          <AlertDialogContent className="bg-sb-surface border-sb-border text-sb-text">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-[#e6edf3]">
+              <AlertDialogTitle className="text-sb-text">
                 Clear All Data?
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-[#8b949e]">
+              <AlertDialogDescription className="text-sb-muted">
                 This will permanently remove all your sticky notes, highlights,
                 and drawings. Your clinical notes will not be affected. This
                 action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="bg-[#0d1117] border-[#30363d] text-[#e6edf3] hover:bg-[#161b22] rounded-xl">
+              <AlertDialogCancel className="bg-sb-bg border-sb-border text-sb-text hover:bg-sb-surface rounded-xl">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleClearAll}
-                className="bg-[#f85149] hover:bg-[#da3633] text-white border-none rounded-xl"
+                className="bg-[#f85149] hover:bg-sb-wrong text-white border-none rounded-xl"
               >
                 <Trash2 className="h-4 w-4 mr-1.5" />
                 Clear All

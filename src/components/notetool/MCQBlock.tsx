@@ -51,48 +51,48 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
     // Before answering
     if (!isAnswered) {
       return cn(
-        'border-[#30363d] bg-[#161b22]',
-        'hover:border-[#f0a500]/50 hover:bg-[#f0a500]/8',
+        'border-[var(--color-sb-border)] bg-[var(--color-sb-surface)]',
+        'hover:border-[var(--color-sb-accent)]/50 hover:bg-[var(--color-sb-accent)]/8',
         'cursor-pointer'
       );
     }
 
     // After answering - correct answer
     if (index === data.correctIndex) {
-      return 'border-[#2ea043] bg-[#2ea043]/12';
+      return 'border-[var(--color-sb-correct)] bg-[var(--color-sb-correct)]/12';
     }
 
     // After answering - wrong selection
     if (index === selected && index !== data.correctIndex) {
-      return 'border-[#da3633] bg-[#da3633]/12';
+      return 'border-[var(--color-sb-wrong)] bg-[var(--color-sb-wrong)]/12';
     }
 
     // After answering - other options
-    return 'border-[#30363d] bg-[#161b22] opacity-40';
+    return 'border-[var(--color-sb-border)] bg-[var(--color-sb-surface)] opacity-40';
   };
 
   const getKeyBadgeClass = (index: number) => {
     if (!isAnswered) {
-      return 'bg-[#1c2330] text-[#8b949e] border border-[#30363d]';
+      return 'bg-[var(--color-sb-surface2)] text-[var(--color-sb-muted)] border border-[var(--color-sb-border)]';
     }
 
     if (index === data.correctIndex) {
-      return 'bg-[#2ea043] text-white border border-[#2ea043]';
+      return 'bg-[var(--color-sb-correct)] text-white border border-[var(--color-sb-correct)]';
     }
 
     if (index === selected && index !== data.correctIndex) {
-      return 'bg-[#da3633] text-white border border-[#da3633]';
+      return 'bg-[var(--color-sb-wrong)] text-white border border-[var(--color-sb-wrong)]';
     }
 
-    return 'bg-[#1c2330] text-[#8b949e]/50 border border-[#30363d]';
+    return 'bg-[var(--color-sb-surface2)] text-[var(--color-sb-muted)]/50 border border-[var(--color-sb-border)]';
   };
 
   const getOptionIcon = (index: number) => {
     if (!isAnswered) return null;
     if (index === data.correctIndex)
-      return <CheckCircle2 className="h-4 w-4 text-[#2ea043] flex-shrink-0" />;
+      return <CheckCircle2 className="h-4 w-4 text-[var(--color-sb-correct)] flex-shrink-0" />;
     if (index === selected && index !== data.correctIndex)
-      return <XCircle className="h-4 w-4 text-[#da3633] flex-shrink-0" />;
+      return <XCircle className="h-4 w-4 text-[var(--color-sb-wrong)] flex-shrink-0" />;
     return null;
   };
 
@@ -102,25 +102,25 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
   };
 
   return (
-    <div className="rounded-xl border border-[#30363d] bg-[#161b22] overflow-hidden">
+    <div className="rounded-xl border border-[var(--color-sb-border)] bg-[var(--color-sb-surface)] overflow-hidden">
       {/* ─── HEADER ──────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[#30363d] bg-[#0d1117]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-sb-border)] bg-[var(--color-sb-bg)]">
         <div className="flex items-center gap-3">
           {/* Question Number Badge */}
           {data.questionNumber !== undefined && data.totalQuestions !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-mono text-[#f0a500] bg-[#f0a500]/12 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono text-[var(--color-sb-accent)] bg-[var(--color-sb-accent)]/12 px-2 py-0.5 rounded-md">
                 Q{data.questionNumber}/{data.totalQuestions}
               </span>
             </div>
           )}
           <div className="flex items-center gap-2">
-            <HelpCircle className="h-4 w-4 text-[#f0a500]" />
-            <span className="text-sm font-semibold text-[#f0a500]">Active Recall</span>
+            <HelpCircle className="h-4 w-4 text-[var(--color-sb-accent)]" />
+            <span className="text-sm font-semibold text-[var(--color-sb-accent)]">Active Recall</span>
           </div>
           <Badge
             variant="outline"
-            className="text-[10px] border-[#f0a500]/30 text-[#f0a500] bg-[#f0a500]/8"
+            className="text-[10px] border-[var(--color-sb-accent)]/30 text-[var(--color-sb-accent)] bg-[var(--color-sb-accent)]/8"
           >
             SBA
           </Badge>
@@ -130,8 +130,8 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
               className={cn(
                 'text-[10px]',
                 isCorrect
-                  ? 'border-[#2ea043]/50 text-[#2ea043] bg-[#2ea043]/8'
-                  : 'border-[#da3633]/50 text-[#da3633] bg-[#da3633]/8'
+                  ? 'border-[var(--color-sb-correct)]/50 text-[var(--color-sb-correct)] bg-[var(--color-sb-correct)]/8'
+                  : 'border-[var(--color-sb-wrong)]/50 text-[var(--color-sb-wrong)] bg-[var(--color-sb-wrong)]/8'
               )}
             >
               {isCorrect ? '✓ Correct' : '✗ Incorrect'}
@@ -145,8 +145,8 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
           className={cn(
             'p-1.5 rounded-md transition-colors',
             flagged
-              ? 'text-[#f0a500] bg-[#f0a500]/12'
-              : 'text-[#8b949e] hover:text-[#f0a500] hover:bg-[#f0a500]/8'
+              ? 'text-[var(--color-sb-accent)] bg-[var(--color-sb-accent)]/12'
+              : 'text-[var(--color-sb-muted)] hover:text-[var(--color-sb-accent)] hover:bg-[var(--color-sb-accent)]/8'
           )}
           title={flagged ? 'Remove bookmark' : 'Bookmark this question'}
         >
@@ -161,7 +161,7 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
       {/* ─── QUESTION BODY ────────────────────────────────────────────── */}
       <div className="p-5 space-y-4">
         {/* Question Text */}
-        <p className="text-sm leading-relaxed font-medium text-[#e6edf3]">
+        <p className="text-sm leading-relaxed font-medium text-[var(--color-sb-text)]">
           {data.question}
         </p>
 
@@ -183,14 +183,14 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
                 className={cn(
                   'mcq-option-key',
                   getKeyBadgeClass(index),
-                  isAnswered && index === data.correctIndex && 'bg-[#2ea043] text-white border-[#2ea043]',
-                  isAnswered && index === selected && index !== data.correctIndex && 'bg-[#da3633] text-white border-[#da3633]',
-                  !isAnswered && 'hover:border-[#f0a500]/50'
+                  isAnswered && index === data.correctIndex && 'bg-[var(--color-sb-correct)] text-white border-[var(--color-sb-correct)]',
+                  isAnswered && index === selected && index !== data.correctIndex && 'bg-[var(--color-sb-wrong)] text-white border-[var(--color-sb-wrong)]',
+                  !isAnswered && 'hover:border-[var(--color-sb-accent)]/50'
                 )}
               >
                 {OPTION_LETTERS[index]}
               </span>
-              <span className="flex-1 text-[#e6edf3]">{option}</span>
+              <span className="flex-1 text-[var(--color-sb-text)]">{option}</span>
               {getOptionIcon(index)}
             </button>
           ))}
@@ -202,7 +202,7 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
             variant="outline"
             size="sm"
             onClick={() => setRevealed(true)}
-            className="w-full border-[#f0a500]/30 text-[#f0a500] bg-[#f0a500]/8 hover:bg-[#f0a500]/15 hover:border-[#f0a500]/50"
+            className="w-full border-[var(--color-sb-accent)]/30 text-[var(--color-sb-accent)] bg-[var(--color-sb-accent)]/8 hover:bg-[var(--color-sb-accent)]/15 hover:border-[var(--color-sb-accent)]/50"
           >
             <Eye className="h-4 w-4 mr-2" />
             Reveal Explanation
@@ -211,12 +211,12 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
 
         {/* ─── EXPLANATION BOX ────────────────────────────────────────── */}
         {revealed && (
-          <div className="explanation-expand rounded-lg rounded-l-none bg-[#1c2330] border border-[#30363d] border-l-[3px] border-l-[#f0a500] p-4 space-y-2">
-            <div className="flex items-center gap-2 text-[#f0a500] text-xs font-semibold">
+          <div className="explanation-expand rounded-lg rounded-l-none bg-[var(--color-sb-surface2)] border border-[var(--color-sb-border)] border-l-[3px] border-l-[var(--color-sb-accent)] p-4 space-y-2">
+            <div className="flex items-center gap-2 text-[var(--color-sb-accent)] text-xs font-semibold">
               <Lightbulb className="h-3.5 w-3.5" />
               Explanation
             </div>
-            <div className="text-sm leading-relaxed text-[#8b949e] whitespace-pre-line">
+            <div className="text-sm leading-relaxed text-[var(--color-sb-muted)] whitespace-pre-line">
               {data.explanation}
             </div>
           </div>
@@ -229,13 +229,13 @@ export function MCQBlock({ data, mode }: MCQBlockProps) {
               variant="ghost"
               size="sm"
               onClick={handleTryAgain}
-              className="gap-1.5 text-xs text-[#8b949e] hover:text-[#e6edf3]"
+              className="gap-1.5 text-xs text-[var(--color-sb-muted)] hover:text-[var(--color-sb-text)]"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Try Again
             </Button>
             {isAnswered && (
-              <div className="text-[10px] text-[#8b949e]">
+              <div className="text-[10px] text-[var(--color-sb-muted)]">
                 {isCorrect ? 'Well done! 🎯' : `Correct answer: ${OPTION_LETTERS[data.correctIndex]}`}
               </div>
             )}
