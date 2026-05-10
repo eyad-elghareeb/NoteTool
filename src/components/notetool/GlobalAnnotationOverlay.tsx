@@ -9,9 +9,25 @@ import {
   Trash2,
   X,
   Type,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
+import { Separator } from '@/components/ui/separator';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   useNoteToolStore,
   type StickyNote as StickyNoteType,
@@ -122,9 +138,6 @@ export function GlobalAnnotationOverlay() {
     clearAllAnnotations,
   } = useNoteToolStore();
 
-  // ── Only available in annotate mode ──────────────────────────────
-  if (mode !== 'annotate') return null;
-
   // ─── Local State ─────────────────────────────────────────────────
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
@@ -133,15 +146,21 @@ export function GlobalAnnotationOverlay() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [mounted, setMounted] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [assetPreview, setAssetPreview] = useState<string | null>(null);
+  const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
+  const [pdfFilename, setPdfFilename] = useState('');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const totalAnnotations = stickyNotes.length + highlightRegions.length + drawingPaths.length;
+  useEffect(() => {
+    if (mode === 'annotate' && !globalPenActive) {
+      setGlobalPenActive(true);
+    }
+  }, [mode, globalPenActive, setGlobalPenActive]);
 
-  // ─── Don't render until mounted or if not in annotate mode ─────
-  if (!mounted || mode !== 'annotate') return null;
+  const totalAnnotations = (stickyNotes?.length || 0) + (highlightRegions?.length || 0) + (drawingPaths?.length || 0);
 
   // ─── Coordinate Helper ───────────────────────────────────────────
   const getCoordinates = useCallback((e: { clientX: number; clientY: number }) => {
@@ -153,6 +172,21 @@ export function GlobalAnnotationOverlay() {
     const transformed = pt.matrixTransform(svg.getScreenCTM()?.inverse());
     return { x: transformed.x, y: transformed.y };
   }, []);
+
+  const handlePdfFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || file.type !== 'application/pdf') return;
+    setPdfFilename(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setPdfDataUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddPdf = () => {
+    if (!pdfDataUrl) return;
+    // ... add logic
+    setPdfDataUrl(null); setPdfFilename('');
+  };
 
   // ─── Text Highlight: Capture Selection ───────────────────────────
   useEffect(() => {
@@ -277,14 +311,13 @@ export function GlobalAnnotationOverlay() {
     (e: ReactMouseEvent<SVGSVGElement>) => {
       if (!globalPenActive) return;
 
-      // ── Sticky Note placement ──
       if (globalPenTool === 'sticky') {
         const colorSet = STICKY_COLORS.find((c) => c.id === selectedStickyColor) || STICKY_COLORS[0];
         const coords = getCoordinates(e);
         const newNote: StickyNoteType = {
           id: `note-${Date.now()}`,
-          x: coords.x - 88,
-          y: coords.y - 20,
+          x: coords.x - 100,
+          y: coords.y - 100,
           text: '',
           color: colorSet.id,
           timestamp: Date.now(),
@@ -293,13 +326,11 @@ export function GlobalAnnotationOverlay() {
         return;
       }
 
-      // ── Eraser: proximity-based detection for drawing paths ──
       if (globalPenTool === 'eraser') {
         const coords = getCoordinates(e);
         const clickX = coords.x;
         const clickY = coords.y;
 
-        // Check highlight regions first (they're rendered as rects in the SVG)
         for (let i = highlightRegions.length - 1; i >= 0; i--) {
           const hl = highlightRegions[i];
           const renderRects = hl.rects && hl.rects.length > 0 ? hl.rects : [hl.rect];
@@ -316,7 +347,6 @@ export function GlobalAnnotationOverlay() {
           }
         }
 
-        // Check drawing paths
         const threshold = 20;
         for (let i = drawingPaths.length - 1; i >= 0; i--) {
           const path = drawingPaths[i];
@@ -352,17 +382,6 @@ export function GlobalAnnotationOverlay() {
     [globalPenTool, stickyNotes, getCoordinates]
   );
 
-  const handleNoteMouseMove = useCallback(
-    (e: ReactMouseEvent) => {
-      if (!dragNote) return;
-      const coords = getCoordinates(e);
-      const x = coords.x - dragOffset.x;
-      const y = coords.y - dragOffset.y;
-      updateStickyNote(dragNote, { x, y });
-    },
-    [dragNote, dragOffset, updateStickyNote, getCoordinates]
-  );
-
   useEffect(() => {
     if (!dragNote) return;
     const handleMove = (e: globalThis.MouseEvent) => {
@@ -380,11 +399,9 @@ export function GlobalAnnotationOverlay() {
     };
   }, [dragNote, dragOffset, updateStickyNote]);
 
-  // ─── Helper: Get sticky color set ────────────────────────────────
   const getStickyColor = (colorId: string) =>
     STICKY_COLORS.find((c) => c.id === colorId) || STICKY_COLORS[0];
 
-  // ─── Cursor per tool ─────────────────────────────────────────────
   const overlayCursor = (() => {
     switch (globalPenTool) {
       case 'pen':
@@ -401,10 +418,6 @@ export function GlobalAnnotationOverlay() {
     }
   })();
 
-  // ─── Don't render when pen tool not activated ───────────────────
-  if (!globalPenActive) return null;
-
-  // ─── Tool hint text ──────────────────────────────────────────────
   const toolHintText = (() => {
     switch (globalPenTool) {
       case 'pen': return 'Click and drag to draw anywhere on screen';
@@ -619,218 +632,136 @@ export function GlobalAnnotationOverlay() {
       })}
 
       {/* ═══════════════════════════════════════════════════════════════
-          LEFT SIDE TOOLBAR — vertical strip, fixed on left side
+          RIGHT SIDE TOOLBAR — floating pill on the right
           ═══════════════════════════════════════════════════════════════ */}
-      <div
-        data-annotate-toolbar
-        className={cn(
-          'fixed left-16 top-14 z-[10002]',
-          'flex flex-col items-center',
-          'bg-sb-bg/90 backdrop-blur-xl',
-          'border-r border-t border-b border-sb-border/70',
-          'rounded-r-xl',
-          'shadow-2xl shadow-black/40',
-          'transition-all duration-200',
-          'py-2',
+      <AnimatePresence>
+        {globalPenActive && (
+          <motion.div
+            drag
+            dragMomentum={false}
+            whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="fixed right-6 top-1/2 -translate-y-1/2 z-[10002] flex flex-col gap-3 p-3 bg-sb-bg/95 backdrop-blur-xl border border-sb-border/70 rounded-2xl shadow-2xl shadow-black/50 cursor-grab active:cursor-grabbing"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-1">
+              {[
+                { id: 'pen', icon: Pencil, label: 'Pen', color: 'var(--color-sb-accent)' },
+                { id: 'highlight-text', icon: Type, label: 'Text', color: 'var(--color-sb-accent)' },
+                { id: 'highlight-free', icon: Highlighter, label: 'Free', color: 'var(--color-sb-accent)' },
+                { id: 'sticky', icon: StickyNote, label: 'Note', color: 'var(--color-sb-accent)' },
+                { id: 'eraser', icon: Eraser, label: 'Eraser', color: 'var(--color-sb-wrong)' },
+              ].map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => setGlobalPenTool(tool.id as any)}
+                  className={cn(
+                    "group relative p-3 rounded-xl transition-all duration-200",
+                    globalPenTool === tool.id 
+                      ? "bg-sb-surface2 text-sb-text shadow-lg" 
+                      : "text-sb-muted hover:text-sb-text hover:bg-sb-surface/50"
+                  )}
+                  title={tool.label}
+                >
+                  <div className="relative z-10">
+                    {tool.id === 'highlight-text' ? (
+                      <span className="relative flex items-center justify-center">
+                        <span
+                          className="absolute bottom-0 left-0 right-0 h-2 rounded-sm"
+                          style={{ backgroundColor: highlightColor, opacity: 0.4 }}
+                        />
+                        <Type className="h-5 w-5 relative" />
+                      </span>
+                    ) : (
+                      <tool.icon className="h-5 w-5" style={{ color: globalPenTool === tool.id ? tool.color : undefined }} />
+                    )}
+                  </div>
+                  {globalPenTool === tool.id && (
+                    <motion.div 
+                      layoutId="activeToolGlow"
+                      className="absolute inset-0 bg-sb-accent/5 rounded-xl border border-sb-accent/30"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="w-full h-px bg-sb-border/50" />
+
+            {/* Tool Settings (Color/Size) */}
+            <div className="flex flex-col items-center gap-4">
+              {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && (
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(globalPenTool === 'pen' ? PEN_COLORS : TEXT_HL_COLORS).map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => globalPenTool === 'pen' ? setDrawingColor(c.color) : setHighlightColor(c.color)}
+                        className={cn(
+                          "w-5 h-5 rounded-full border-2 transition-transform hover:scale-110",
+                          (globalPenTool === 'pen' ? drawingColor : highlightColor) === c.color 
+                            ? "border-white scale-110" 
+                            : "border-transparent"
+                        )}
+                        style={{ backgroundColor: c.color }}
+                      />
+                    ))}
+                  </div>
+                  <div className="h-20 py-2 flex justify-center">
+                    <Slider
+                      orientation="vertical"
+                      min={1}
+                      max={40}
+                      step={1}
+                      value={[drawingBrushSize]}
+                      onValueChange={(val) => setDrawingBrushSize(val[0])}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {globalPenTool === 'sticky' && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {STICKY_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedStickyColor(c.id)}
+                      className={cn(
+                        "w-5 h-5 rounded-full border-2 transition-transform hover:scale-110",
+                        selectedStickyColor === c.id ? "border-white scale-110" : "border-transparent"
+                      )}
+                      style={{ backgroundColor: c.bg }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="w-full h-px bg-sb-border/50" />
+
+            <button
+              onClick={clearAllAnnotations}
+              className="p-3 rounded-xl text-sb-wrong hover:bg-sb-wrong/10 transition-colors"
+              title="Clear All"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+
+            {/* Count */}
+            <div className="text-[10px] font-mono text-sb-muted text-center">
+              {totalAnnotations}
+            </div>
+          </motion.div>
         )}
-        style={{ width: '48px' }}
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {/* ── Tool Buttons (stacked vertically) ── */}
-        <div className="flex flex-col items-center gap-0.5 p-0.5">
-          {/* Pen */}
-          <SideToolButton
-            active={globalPenTool === 'pen'}
-            onClick={() => setGlobalPenTool('pen')}
-            icon={<Pencil className="h-4 w-4" />}
-            label="Pen"
-            activeColor="var(--color-sb-accent)"
-          />
+      </AnimatePresence>
 
-          {/* Text Highlight */}
-          <SideToolButton
-            active={globalPenTool === 'highlight-text'}
-            onClick={() => setGlobalPenTool('highlight-text')}
-            icon={
-              <span className="relative flex items-center justify-center">
-                <span
-                  className="absolute bottom-0 left-0 right-0 h-2 rounded-sm"
-                  style={{ backgroundColor: highlightColor, opacity: 0.4 }}
-                />
-                <Type className="h-4 w-4 relative" />
-              </span>
-            }
-            label="Text HL"
-            activeColor="var(--color-sb-accent)"
-          />
-
-          {/* Free Highlight */}
-          <SideToolButton
-            active={globalPenTool === 'highlight-free'}
-            onClick={() => setGlobalPenTool('highlight-free')}
-            icon={<Highlighter className="h-4 w-4" />}
-            label="Free HL"
-            activeColor="var(--color-sb-accent)"
-          />
-
-          {/* Sticky Note */}
-          <SideToolButton
-            active={globalPenTool === 'sticky'}
-            onClick={() => setGlobalPenTool('sticky')}
-            icon={<StickyNote className="h-4 w-4" />}
-            label="Sticky"
-            activeColor="var(--color-sb-accent)"
-          />
-
-          {/* Eraser */}
-          <SideToolButton
-            active={globalPenTool === 'eraser'}
-            onClick={() => setGlobalPenTool('eraser')}
-            icon={<Eraser className="h-4 w-4" />}
-            label="Eraser"
-            activeColor="var(--color-sb-wrong)"
-          />
-        </div>
-
-        {/* ── Divider ── */}
-        <div className="w-6 h-px bg-sb-border/60 my-1" />
-
-        {/* ── Annotation Count ── */}
-        <span className="text-[9px] text-sb-accent bg-sb-accent/10 px-1.5 py-0.5 rounded-full font-medium leading-none">
-          {totalAnnotations}
-        </span>
-
-        {/* ── Spacer ── */}
-        <div className="flex-1" />
-
-        {/* ── Clear All ── */}
-        <button
-          className="flex items-center justify-center h-8 w-8 rounded-lg text-sb-muted hover:text-sb-wrong hover:bg-sb-wrong/10 transition-colors shrink-0"
-          onClick={() => clearAllAnnotations()}
-          title="Clear All Annotations"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-
-        {/* ── Close ── */}
-        <button
-          className="flex items-center justify-center h-8 w-8 rounded-lg text-sb-muted hover:text-sb-text hover:bg-sb-surface2 transition-colors shrink-0"
-          onClick={() => {
-            setGlobalPenActive(false);
-            setGlobalPenTool('pen');
-          }}
-          title="Close Annotation Mode"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          EXPANDED OPTIONS PANEL — slides right from toolbar
-          ═══════════════════════════════════════════════════════════════ */}
-      {(globalPenTool === 'pen' || globalPenTool === 'highlight-text' || globalPenTool === 'highlight-free' || globalPenTool === 'sticky') && (
-        <div
-          className={cn(
-            'fixed left-16 z-[10002]',
-            'flex flex-col items-start',
-            'bg-sb-bg/90 backdrop-blur-xl',
-            'border border-sb-border/70',
-            'rounded-xl',
-            'shadow-2xl shadow-black/40',
-            'px-3 py-2',
-            'transition-all duration-200',
-          )}
-          style={{ top: 'calc(3.5rem + 52px)' }}
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {/* Color Picker (contextual) */}
-          {globalPenTool === 'pen' && (
-            <div className="flex items-center gap-1.5">
-              {PEN_COLORS.map((c) => (
-                <ColorDot
-                  key={c.id}
-                  color={c.color}
-                  active={drawingColor === c.color}
-                  onClick={() => setDrawingColor(c.color)}
-                />
-              ))}
-            </div>
-          )}
-
-          {globalPenTool === 'highlight-text' && (
-            <div className="flex items-center gap-1.5">
-              {TEXT_HL_COLORS.map((c) => (
-                <ColorDot
-                  key={c.id}
-                  color={c.color}
-                  active={highlightColor === c.color}
-                  onClick={() => setHighlightColor(c.color)}
-                />
-              ))}
-            </div>
-          )}
-
-          {globalPenTool === 'highlight-free' && (
-            <div className="flex items-center gap-1.5">
-              {FREE_HL_COLORS.map((c) => (
-                <ColorDot
-                  key={c.id}
-                  color={c.color}
-                  active={highlightColor === c.color}
-                  onClick={() => setHighlightColor(c.color)}
-                />
-              ))}
-            </div>
-          )}
-
-          {globalPenTool === 'sticky' && (
-            <div className="flex items-center gap-1.5">
-              {STICKY_COLORS.map((c) => (
-                <ColorDot
-                  key={c.id}
-                  color={c.bg}
-                  active={selectedStickyColor === c.id}
-                  onClick={() => setSelectedStickyColor(c.id)}
-                  border={c.border}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Brush Size Slider (pen & free-highlight) */}
-          {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && (
-            <div className="flex items-center gap-2 mt-2 min-w-[120px]">
-              <Slider
-                value={[drawingBrushSize]}
-                onValueChange={([v]) => setDrawingBrushSize(v)}
-                min={1}
-                max={20}
-                step={1}
-                className="w-20"
-              />
-              <span className="text-[10px] text-sb-muted font-mono w-8 text-right shrink-0">
-                {globalPenTool === 'highlight-free'
-                  ? `${freeHighlightWidth(drawingBrushSize)}px`
-                  : `${drawingBrushSize}px`}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-          TOOL HINT — appears to the right of the toolbar
-          ═══════════════════════════════════════════════════════════════ */}
-      <div className="fixed left-16 z-[10002]" style={{ top: 'calc(3.5rem + 100px)' }}>
-        <p className="text-[11px] text-sb-muted/70 bg-sb-bg/60 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-sb-border/30 whitespace-nowrap max-w-[220px]">
-          {toolHintText}
-        </p>
-      </div>
     </>
   );
 }
+
 
 // ─── Sub-components ──────────────────────────────────────────────────
 

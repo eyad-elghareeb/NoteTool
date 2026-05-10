@@ -108,6 +108,7 @@ export default function Home() {
     setPdfFile,
     removeSectionFromNote,
     updateSectionInNote,
+    setMode,
   } = store;
 
   const isDark = settings.theme === 'dark';

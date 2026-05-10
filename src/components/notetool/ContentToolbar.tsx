@@ -23,6 +23,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
   Plus,
   FileText,
   HelpCircle,
@@ -70,6 +76,12 @@ export function ContentToolbar() {
   // ─── Tab Group Form ───────────────────────────────────────────────
   const [tabTitle, setTabTitle] = useState('');
   const [tabNames, setTabNames] = useState('Tab 1, Tab 2');
+
+  // ─── Asset Form ──────────────────────────────────────────────────
+  const [assetTitle, setAssetTitle] = useState('');
+  const [assetUrl, setAssetUrl] = useState('');
+  const [assetType, setAssetType] = useState<'image' | 'video'>('image');
+  const [assetPreview, setAssetPreview] = useState<string | null>(null);
 
   // ─── PDF Embed Form ───────────────────────────────────────────────
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
@@ -161,6 +173,35 @@ export function ContentToolbar() {
     setTabTitle(''); setTabNames('Tab 1, Tab 2'); setOpenDialog(null);
   };
 
+  const handleAssetFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAssetPreview(reader.result as string);
+    reader.readAsDataURL(file);
+    if (!assetTitle) setAssetTitle(file.name);
+  };
+
+  const handleAddAsset = () => {
+    const finalUrl = assetPreview || assetUrl;
+    if (!finalUrl) return;
+
+    const section: NoteSection = {
+      id: generateId(),
+      type: 'asset',
+      title: assetTitle || 'Clinical Asset',
+      content: {
+        id: generateId(),
+        type: assetType,
+        url: finalUrl,
+        caption: assetTitle,
+      },
+      dynamic: true,
+    };
+    addSectionToNote(activeNoteId, section);
+    setAssetTitle(''); setAssetUrl(''); setAssetPreview(null); setOpenDialog(null);
+  };
+
   const handlePdfFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || file.type !== 'application/pdf') return;
@@ -173,7 +214,9 @@ export function ContentToolbar() {
   const handleAddPdf = () => {
     if (!pdfDataUrl) return;
     const section: NoteSection = {
-      id: generateId(), type: 'pdf-embed', title: pdfFilename || 'Embedded PDF',
+      id: generateId(),
+      type: 'pdf-embed',
+      title: pdfFilename || 'Embedded PDF',
       content: { dataUrl: pdfDataUrl, filename: pdfFilename },
       dynamic: true,
     };
@@ -253,7 +296,7 @@ export function ContentToolbar() {
 
           {/* MERMAID LIVE MAKER */}
           {tool.id === 'mermaid' && (
-            <DialogContent className="max-w-[900px] p-0 border-none bg-transparent">
+            <DialogContent className="!max-w-[95vw] !w-[95vw] h-[90vh] p-0 overflow-hidden bg-sb-surface border-sb-border flex flex-col shadow-2xl">
               <DialogTitle className="sr-only">Visual Mermaid Maker</DialogTitle>
               <MermaidMakerGUI 
                 onSave={(html) => {
@@ -297,13 +340,61 @@ export function ContentToolbar() {
             <DialogContent className="bg-sb-surface border-sb-border text-sb-text">
               <DialogHeader><DialogTitle className="text-sb-text flex items-center gap-2"><ImagePlus className="h-4 w-4 text-emerald-400" />Add Asset</DialogTitle></DialogHeader>
               <div className="space-y-4 py-2">
-                <div className="border-2 border-dashed border-sb-border rounded-lg p-8 text-center">
-                  <ImagePlus className="h-10 w-10 text-sb-muted mx-auto mb-3" />
-                  <p className="text-sm text-sb-muted">Asset placeholder</p>
-                  <Badge variant="outline" className="mt-3 border-sb-border text-sb-muted text-[10px]">Coming Soon</Badge>
+                <div className="space-y-2">
+                  <Label className="text-sb-muted">Asset Title / Caption</Label>
+                  <Input value={assetTitle} onChange={(e) => setAssetTitle(e.target.value)} placeholder="e.g., Chest X-Ray - PA View" className="bg-sb-bg border-sb-border text-sb-text" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-sb-muted">Asset Type</Label>
+                  <Select value={assetType} onValueChange={(v) => setAssetType(v as 'image' | 'video')}>
+                    <SelectTrigger className="bg-sb-bg border-sb-border text-sb-text"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-sb-surface border-sb-border">
+                      <SelectItem value="image">Image</SelectItem>
+                      <SelectItem value="video">Video</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sb-muted">Source</Label>
+                  <Tabs defaultValue="upload" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-sb-bg">
+                      <TabsTrigger value="upload" className="text-xs">Upload</TabsTrigger>
+                      <TabsTrigger value="url" className="text-xs">URL</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="upload" className="mt-2">
+                      <label className={cn('block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-emerald-500/50 transition-colors', assetPreview ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-sb-border')}>
+                        {assetPreview ? (
+                          <div className="relative aspect-video rounded-lg overflow-hidden border border-sb-border">
+                            {assetType === 'image' ? (
+                              <img src={assetPreview} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <video src={assetPreview} className="w-full h-full object-cover" />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+                              <p className="text-white text-xs font-bold">Change File</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <ImagePlus className="h-8 w-8 mx-auto mb-2 text-sb-muted" />
+                            <p className="text-xs text-sb-muted">Click to upload file</p>
+                          </>
+                        )}
+                        <input type="file" accept={assetType === 'image' ? 'image/*' : 'video/*'} className="hidden" onChange={handleAssetFile} />
+                      </label>
+                    </TabsContent>
+                    <TabsContent value="url" className="mt-2">
+                      <Input value={assetUrl} onChange={(e) => setAssetUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="bg-sb-bg border-sb-border text-sb-text" />
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </div>
-              <DialogFooter><DialogClose asChild><Button variant="ghost" className="text-sb-muted">Cancel</Button></DialogClose></DialogFooter>
+              <DialogFooter>
+                <DialogClose asChild><Button variant="ghost" className="text-sb-muted">Cancel</Button></DialogClose>
+                <Button onClick={handleAddAsset} disabled={!assetPreview && !assetUrl} className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40">Add Asset</Button>
+              </DialogFooter>
             </DialogContent>
           )}
 
