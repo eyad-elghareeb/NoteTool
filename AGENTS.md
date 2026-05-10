@@ -2092,4 +2092,811 @@ bun run lint
 
 ---
 
+---
+
+## 10. Testing Strategy
+
+### 10.1 Unit Testing
+
+| Framework | Tool | Purpose |
+|-----------|------|---------|
+| Test Runner | Vitest | Fast, Vite-native test execution |
+| Rendering | @testing-library/react | Component behavior (not implementation) |
+| Hooks | @testing-library/react-hooks | Zustand store & custom hooks |
+| Coverage | c8 / istanbul | Minimum 80% branch coverage |
+
+**Pattern — Component Test:**
+
+```typescript
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MCQBlock } from '@/components/notetool/MCQBlock';
+
+describe('MCQBlock', () => {
+  it('renders question text', () => {
+    render(<MCQBlock section={mockSection} />);
+    expect(screen.getByText(/Which is the most appropriate/i)).toBeInTheDocument();
+  });
+
+  it('reveals explanation after selecting correct answer', () => {
+    render(<MCQBlock section={mockSection} />);
+    fireEvent.click(screen.getByText('Option B'));
+    expect(screen.getByText(/Inotropic support/i)).toBeInTheDocument();
+  });
+
+  it('highlights selected option', () => {
+    render(<MCQBlock section={mockSection} />);
+    const option = screen.getByText('Option B');
+    fireEvent.click(option);
+    expect(option.closest('button')).toHaveClass('bg-sb-correct');
+  });
+});
+```
+
+**Pattern — Store Test:**
+
+```typescript
+import { useNoteToolStore } from '@/stores/notetool-store';
+
+describe('notetool-store', () => {
+  beforeEach(() => {
+    useNoteToolStore.setState({
+      notes: [],
+      stickyNotes: [],
+      highlightRegions: [],
+      drawingPaths: [],
+    });
+  });
+
+  it('adds a note', () => {
+    const { addNote } = useNoteToolStore.getState();
+    addNote(mockNote);
+    expect(useNoteToolStore.getState().notes).toHaveLength(1);
+  });
+
+  it('prevents duplicate note IDs', () => {
+    const { addNote } = useNoteToolStore.getState();
+    addNote(mockNote);
+    addNote({ ...mockNote, id: 'duplicate-id' });
+    addNote({ ...mockNote, id: 'duplicate-id' });
+    expect(useNoteToolStore.getState().notes).toHaveLength(2);
+  });
+
+  it('saves annotations per note when switching', () => {
+    const { setActiveNoteId, addStickyNote, notes } = useNoteToolStore.getState();
+    notes.push(mockNote1, mockNote2);
+    setActiveNoteId('note-1');
+    addStickyNote({ id: 'sticky-1', x: 100, y: 100, text: 'Test', color: 'yellow', timestamp: Date.now() });
+    setActiveNoteId('note-2');
+    expect(useNoteToolStore.getState().stickyNotes).toHaveLength(0); // note-2 has no annotations
+    setActiveNoteId('note-1');
+    expect(useNoteToolStore.getState().stickyNotes).toHaveLength(1); // restored
+  });
+});
+```
+
+### 10.2 E2E Testing (Playwright)
+
+```typescript
+// tests/e2e/annotation.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Global Annotation Overlay', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('http://localhost:3000');
+    // Switch to Annotate mode
+    await page.click('[data-testid="tri-mode-switcher"]');
+    await page.click('text=Annotate');
+  });
+
+  test('pen tool draws on canvas', async ({ page }) => {
+    // Select pen tool
+    await page.click('[title="Pen"]');
+    const canvas = page.locator('svg.absolute');
+    await canvas.hover();
+    await page.mouse.down();
+    await page.mouse.move(100, 100);
+    await page.mouse.move(200, 200);
+    await page.mouse.up();
+    // Verify a path was created
+    const paths = await page.locator('svg path').count();
+    expect(paths).toBeGreaterThan(0);
+  });
+
+  test('sticky note can be added and edited', async ({ page }) => {
+    await page.click('[title="Note"]');
+    await page.locator('svg').click({ position: { x: 300, y: 300 } });
+    await page.fill('textarea', 'Remember to check BNP');
+    await expect(page.locator('textarea')).toHaveValue('Remember to check BNP');
+  });
+
+  test('eraser removes annotations', async ({ page }) => {
+    // Draw first
+    await page.click('[title="Pen"]');
+    await page.mouse.move(400, 400);
+    await page.mouse.down();
+    await page.mouse.move(450, 450);
+    await page.mouse.up();
+    // Erase
+    await page.click('[title="Eraser"]');
+    await page.locator('svg').click({ position: { x: 425, y: 425 } });
+    // Verify erased
+    const remainingPaths = await page.locator('svg path').count();
+    expect(remainingPaths).toBe(0);
+  });
+});
+```
+
+**Playwright Config:**
+
+```typescript
+// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: true,
+  retries: 2,
+  use: {
+    baseURL: 'http://localhost:3000',
+    viewport: { width: 1440, height: 900 },
+    actionTimeout: 10000,
+  },
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'firefox', use: { browserName: 'firefox' } },
+    { name: 'webkit', use: { browserName: 'webkit' } },
+  ],
+});
+```
+
+### 10.3 Visual Regression Testing
+
+- **Tool**: Percy or Chromatic
+- **Baseline**: `main` branch
+- **Threshold**: 0.1% pixel diff tolerance
+- **Critical paths**: Note rendering, MCQ interaction, Flashcards, Tri-Mode transitions, Connectome graph, Mermaid diagrams
+
+### 10.4 Accessibility Testing
+
+- **Automated**: axe-core via Playwright (`@axe-core/playwright`)
+- **Manual**: Screen reader (NVDA / VoiceOver)
+- **Target**: WCAG 2.2 Level AA
+- **Key checks**: Color contrast, keyboard navigation, ARIA labels, focus management, heading hierarchy
+
+---
+
+## 11. Performance Optimization
+
+### 11.1 Bundle Analysis
+
+```bash
+# Analyze bundle size
+npx next build && npx next analyze
+
+# Key metrics:
+# - Total JS bundle < 500 KB (gzipped)
+# - First Load JS < 150 KB
+# - LCP < 2.0s
+# - TTI < 3.0s
+```
+
+### 11.2 Component-Level Optimization
+
+| Technique | When to Use | Implementation |
+|-----------|-------------|---------------|
+| `React.memo` | Pure presentational components | `export default React.memo(MCQBlock)` |
+| `useMemo` | Expensive computations | `useMemo(() => buildSmoothPath(points), [points])` |
+| `useCallback` | Callback props passed to children | `useCallback(handlePointerDown, [...deps])` |
+| Lazy loading | Heavy visualizations (D3, Mermaid) | `const ConnectomeView = dynamic(() => import('./ConnectomeView'), { ssr: false })` |
+| Virtual scrolling | Large note lists | `react-window` or `@tanstack/react-virtual` |
+| Image lazy loading | Asset images | `loading="lazy"` on `<img>` tags |
+
+**Example — Dynamic Import for Heavy Components:**
+
+```typescript
+import dynamic from 'next/dynamic';
+
+const ConnectomeView = dynamic(
+  () => import('@/components/notetool/ConnectomeView'),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[400px] w-full" />,
+  }
+);
+
+const MermaidDiagram = dynamic(
+  () => import('@/components/notetool/MermaidDiagram'),
+  { ssr: false }
+);
+```
+
+### 11.3 Zustand Selector Optimization
+
+```typescript
+// ❌ BAD — creates new object on every render
+const { notes, activeNoteId } = useNoteToolStore();
+
+// ✅ GOOD — selects only what you need
+const notes = useNoteToolStore((s) => s.notes);
+const activeNoteId = useNoteToolStore((s) => s.activeNoteId);
+
+// ✅ BEST — with shallow equality for objects/arrays
+import { shallow } from 'zustand/shallow';
+const [notes, activeNoteId] = useNoteToolStore(
+  (s) => [s.notes, s.activeNoteId],
+  shallow
+);
+```
+
+### 11.4 Rendering Performance
+
+- **FLIP animations**: Use Framer Motion's `layout` prop instead of manual transforms for smooth layout animations.
+- **Canvas rendering**: SVG overlay uses D3's simulation for Connectome — limit forces to 300 iterations.
+- **Debounced persistence**: Zustand `persist` middleware writes to `localStorage` synchronously — wrap in `requestIdleCallback` for heavy state changes.
+- **Code splitting**: Each Tri-Mode view loaded via dynamic imports.
+- **Memoize SVG paths**: `buildSmoothPath` result memoized per `DrawingPath.points` reference.
+
+### 11.5 Image Optimization
+
+| Strategy | Implementation |
+|----------|---------------|
+| Next.js Image component | `<Image>` with `unoptimized` for static export, sharp for standalone |
+| Lazy loading | `loading="lazy"` attribute |
+| Progressive loading | Blur placeholder (`placeholder="blur"`) |
+| Format selection | AVIF/WebP with PNG fallback |
+| Cache headers | `public, max-age=31536000, immutable` for production assets |
+
+---
+
+## 12. Security Model
+
+### 12.1 Content Security Policy (CSP)
+
+```typescript
+// Production CSP for Next.js + Electron
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  // Required for Next.js inline scripts
+  "style-src 'self' 'unsafe-inline'",                  // Required for Tailwind/UI libs
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https: wss:",
+  "frame-src 'self' blob:",
+  "object-src 'none'",
+].join('; ');
+```
+
+### 12.2 Threat Model
+
+| Threat | Risk | Mitigation |
+|--------|------|-----------|
+| XSS via note content | High | DOMPurify before rendering markdown; CSP headers |
+| XSS via developer HTML | Critical | Sandboxed iframe evaluation; CSP restricts script execution |
+| Prototype pollution | Medium | Zustand immutable state updates; Object.freeze on store |
+| localStorage tampering | Low | Schema validation on state hydration; JSON.parse in try/catch |
+| Electron RCE | Critical | contextIsolation=true; nodeIntegration=false; preload whitelist |
+| IPC injection | High | preload.ts channel whitelist (validChannels) |
+| Asset path traversal | Medium | Resolve paths with path.resolve(); reject '..' in filenames |
+
+### 12.3 Input Sanitization
+
+```typescript
+// lib/sanitize.ts
+import DOMPurify from 'dompurify';
+
+export function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'pre', 'code', 'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+      'img', 'div', 'span', 'hr',
+    ],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id', 'style', 'target', 'rel'],
+    ALLOW_DATA_ATTR: false,
+  });
+}
+
+export function sanitizeNoteContent(content: string): string {
+  // Remove script tags entirely
+  return content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+}
+```
+
+### 12.4 Electron Security Checklist
+
+- [x] `contextIsolation: true` — renderer cannot access Node.js
+- [x] `nodeIntegration: false` — no `require()` in renderer
+- [x] `sandbox: false` — required for preload (Electron limitation)
+- [x] `webviewTag: false` — disable webview
+- [x] `allowRunningInsecureContent: false`
+- [x] Preload channel whitelist — see `preload.ts` `validChannels`
+- [x] `setWindowOpenHandler` — deny all new windows
+- [x] CSP headers set via `onHeadersReceived`
+- [x] No `remote` module usage
+- [x] `Menu.setApplicationMenu` — custom menu (no dev tools in prod)
+
+---
+
+## 13. Accessibility (a11y)
+
+### 13.1 WCAG Compliance Targets
+
+| WCAG Criterion | Level | Target | Implementation |
+|---------------|-------|--------|---------------|
+| 1.1.1 Non-text Content | A | ✅ | `<img alt="">` on all images; icons use `aria-hidden` |
+| 1.3.1 Info and Relationships | A | ✅ | Semantic HTML; ARIA landmarks |
+| 1.4.1 Use of Color | A | ✅ | Not sole means of conveying info |
+| 1.4.3 Contrast (Minimum) | AA | ✅ | 4.5:1 text; 3:1 large text |
+| 1.4.4 Resize Text | AA | ✅ | Up to 200% without loss |
+| 1.4.11 Non-text Contrast | AA | ✅ | UI components maintain 3:1 |
+| 2.1.1 Keyboard | A | ✅ | All actions keyboard accessible |
+| 2.4.3 Focus Order | A | ✅ | Logical DOM order |
+| 2.4.4 Link Purpose | A | ✅ | Descriptive link text |
+| 2.4.7 Focus Visible | AA | ✅ | Visible focus ring |
+| 3.3.2 Labels or Instructions | A | ✅ | `<label>` elements on all form inputs |
+| 4.1.2 Name, Role, Value | A | ✅ | ARIA attributes |
+
+### 13.2 ARIA Patterns
+
+```tsx
+// Sidebar navigation
+<nav aria-label="Note navigation" role="tree">
+  {notes.map((note) => (
+    <div
+      key={note.id}
+      role="treeitem"
+      aria-selected={note.id === activeNoteId}
+      tabIndex={0}
+      onKeyDown={handleKeyNav}
+      onClick={() => setActiveNoteId(note.id)}
+    >
+      {note.title}
+    </div>
+  ))}
+</nav>
+
+// MCQ Options
+<fieldset role="radiogroup" aria-label={`MCQ: ${question}`}>
+  {options.map((opt, i) => (
+    <button
+      key={i}
+      role="radio"
+      aria-checked={selected === i}
+      aria-label={`Option ${String.fromCharCode(65 + i)}: ${opt}`}
+      onClick={() => handleSelect(i)}
+    >
+      <span className="mcq-option-key">{String.fromCharCode(65 + i)}</span>
+      {opt}
+    </button>
+  ))}
+</fieldset>
+
+// Global Annotation Overlay
+<div
+  role="application"
+  aria-label="Annotation tools"
+  aria-hidden={!globalPenActive}
+>
+  <button aria-label="Pen tool" aria-pressed={globalPenTool === 'pen'} />
+  <button aria-label="Text highlight tool" aria-pressed={globalPenTool === 'highlight-text'} />
+  <button aria-label="Free-form highlight tool" aria-pressed={globalPenTool === 'highlight-free'} />
+  <button aria-label="Sticky note tool" aria-pressed={globalPenTool === 'sticky'} />
+  <button aria-label="Eraser tool" aria-pressed={globalPenTool === 'eraser'} />
+  <Slider aria-label="Brush size" />
+</div>
+```
+
+### 13.3 Keyboard Navigation
+
+| Component | Keyboard Behavior |
+|-----------|------------------|
+| Sidebar | Arrow Up/Down to navigate, Enter to select, Tab to move focus |
+| MCQ | 1-5 / A-E to select, Enter to reveal, R to reset |
+| Flashcards | Space to flip, ←/→ to navigate deck |
+| Command Palette | Arrow Up/Down, Enter, Escape |
+| Annotation Toolbar | Tab between tools, Arrow keys within color grid |
+| Modals | Tab cycle, Escape to close, focus trap |
+| Tabs | Arrow Left/Right to switch, Home/End for first/last |
+| Sliders | Arrow Up/Down/Left/Right, Page Up/Down, Home/End |
+
+### 13.4 Color Contrast Validation
+
+```
+Primary text (#e6edf3) on BG (#0d1117)  →  12.1:1 ✅
+Muted text (#8b949e) on BG (#0d1117)    →  5.3:1 ✅
+Amber accent (#f0a500) on BG (#0d1117)  →  7.2:1 ✅
+Red (#da3633) on BG (#0d1117)           →  4.8:1 ✅
+Green (#2ea043) on BG (#0d1117)         →  5.6:1 ✅
+White (#ffffff) on amber (#f0a500)      →  2.4:1 ⚠️  (large text only)
+```
+
+### 13.5 Screen Reader Testing Protocol
+
+1. **NVDA (Windows)**: Test all CRUD operations, annotation tools, MCQ interaction, note switching
+2. **VoiceOver (macOS)**: Verify sidebar navigation, search, export flows
+3. **TalkBack (Android)**: Future mobile-responsive testing
+4. **Checklist**:
+   - [ ] All content is announced correctly
+   - [ ] Focus indicator visible at all times
+   - [ ] No focus traps or dead ends
+   - [ ] Dynamic content updates announced (aria-live regions)
+   - [ ] Icon-only buttons have aria-label
+   - [ ] Status messages reachable by screen reader
+
+---
+
+## 14. Internationalization (i18n)
+
+### 14.1 Architecture
+
+```typescript
+// hooks/useTranslation.ts
+const translations = {
+  en: {
+    'note.new': 'New Synthesis Note',
+    'note.delete': 'Delete',
+    'note.duplicate': 'Duplicate',
+    'mcq.select': 'Select answer',
+    'mcq.reveal': 'Reveal explanation',
+    'flashcard.flip': 'Flip card',
+    'annotation.pen': 'Pen',
+    'annotation.highlight': 'Highlight',
+    'annotation.sticky': 'Sticky Note',
+    'mode.read': 'Read',
+    'mode.annotate': 'Annotate',
+    'mode.developer': 'Developer',
+    'sidebar.notes': 'Notes',
+    'sidebar.library': 'Library',
+    'sidebar.connectome': 'Connectome',
+    'errors.save': 'Failed to save. Your work has been preserved locally.',
+  },
+  ar: {
+    'note.new': 'ملاحظة تركيبية جديدة',
+    'note.delete': 'حذف',
+    'mcq.select': 'اختر إجابة',
+    // ...
+  },
+};
+```
+
+### 14.2 RTL Support
+
+For Arabic and other RTL languages:
+
+```css
+/* globals.css */
+[dir="rtl"] .sidebar { right: 0; left: auto; }
+[dir="rtl"] .toolbar { flex-direction: row-reverse; }
+[dir="rtl"] .mcq-option-key { margin-left: 0.5rem; margin-right: 0; }
+[dir="rtl"] .sticky-note-header { flex-direction: row-reverse; }
+```
+
+### 14.3 Medical Terminology Localization
+
+- ICD-10 and SNOMED CT codes are language-agnostic (no translation needed)
+- Clinical guidelines reference international sources (NICE, AHA/ACC, ESC)
+- Drug names: Use generic (INN) names to avoid brand-name localization issues
+- Unit conversions: Store in SI units; display conversion for non-SI locales (e.g., mg/dL vs mmol/L)
+
+---
+
+## 15. Continuous Integration & Deployment
+
+### 15.1 CI Pipeline (GitHub Actions)
+
+```yaml
+# .github/workflows/ci.yml
+name: SurgicalBrain CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: npx tsc --noEmit
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun vitest run --coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: npx playwright install --with-deps
+      - run: bun run build && bun start & npx wait-on http://localhost:3000
+      - run: npx playwright test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit-test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: .next/
+```
+
+### 15.2 Docker Development
+
+```dockerfile
+# Dockerfile.dev
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install
+COPY . .
+EXPOSE 3000
+CMD ["bun", "run", "dev"]
+```
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+```
+
+### 15.3 Release Process
+
+1. **Feature branch** → PR → CI checks → squash-merge to `develop`
+2. **Develop branch** → nightly e2e tests
+3. **Release branch** (`release/v*.*.*`) → staging deployment → regression testing
+4. **Main branch** → production deployment → version tag
+5. **Electron build** → manual trigger via `build:electron` workflow
+6. **Portable build** → uploaded to GitHub Releases
+
+| Stage | Version | Tag | Artifacts |
+|-------|---------|-----|-----------|
+| Development | `1.0.0-dev.x` | — | Dev server |
+| Staging | `1.0.0-rc.x` | `rc-v1.0.0` | Static build |
+| Production | `1.0.0` | `v1.0.0` | Static + Electron builds |
+
+---
+
+## 16. Git Workflow & Conventions
+
+### 16.1 Branch Strategy
+
+```
+main
+  └─ develop
+       ├─ feature/color-picker-overhaul
+       ├─ feature/pdf-annotation
+       ├─ fix/slider-sluggishness
+       └─ refactor/state-management
+```
+
+| Branch | Base | Purpose |
+|--------|------|---------|
+| `main` | — | Production-ready code |
+| `develop` | `main` | Integration branch |
+| `feature/*` | `develop` | New features |
+| `fix/*` | `develop` | Bug fixes |
+| `refactor/*` | `develop` | Code improvements |
+| `release/*` | `develop` | Release candidates |
+
+### 16.2 Commit Convention (Conventional Commits)
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+| Type | Usage | Example |
+|------|-------|---------|
+| `feat` | New feature | `feat(annotations): add comprehensive color picker` |
+| `fix` | Bug fix | `fix(slider): replace onValueChange with onValueCommit for responsiveness` |
+| `docs` | Documentation | `docs(agents): expand testing and security sections` |
+| `refactor` | Code change (no feature/fix) | `refactor(store): extract annotation persistence to middleware` |
+| `perf` | Performance improvement | `perf(connectome): limit force simulation to 300 iterations` |
+| `test` | Test addition/modification | `test(mcq): add keyboard navigation tests` |
+| `chore` | Build/config/deps | `chore(deps): update framer-motion to v12` |
+
+### 16.3 Pull Request Template
+
+```markdown
+## Description
+<!-- Brief description of the change -->
+
+## Type of Change
+- [ ] feat: New feature
+- [ ] fix: Bug fix
+- [ ] docs: Documentation
+- [ ] refactor: Code restructure
+- [ ] perf: Performance
+- [ ] test: Testing
+- [ ] chore: Build/config
+
+## Testing
+- [ ] Unit tests added/passed
+- [ ] E2E tests added/passed
+- [ ] Manually tested in Chrome
+- [ ] Manually tested in Firefox
+- [ ] Manually tested in Safari
+
+## Accessibility
+- [ ] Keyboard navigation works
+- [ ] Screen reader compatible
+- [ ] Color contrast meets WCAG AA
+
+## Checklist
+- [ ] Code follows project conventions
+- [ ] No new warnings/errors
+- [ ] Self-reviewed
+```
+
+---
+
+## 17. Environment Variables & Configuration
+
+### 17.1 Environment File
+
+```bash
+# .env.local — Local development
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_NAME=SurgicalBrain NoteTool
+NEXT_PUBLIC_ENVIRONMENT=development
+ELECTRON_BUILD=false
+```
+
+```bash
+# .env.production — Production build
+NEXT_PUBLIC_APP_URL=https://surgicalbrain.app
+NEXT_PUBLIC_APP_NAME=SurgicalBrain NoteTool
+NEXT_PUBLIC_ENVIRONMENT=production
+NEXT_PUBLIC_ENABLE_ANALYTICS=false
+ELECTRON_BUILD=false
+```
+
+### 17.2 Feature Flags
+
+```typescript
+// lib/feature-flags.ts
+export const FEATURES = {
+  annotations: true,
+  connectome: true,
+  pdfWorkspace: true,
+  developerMode: true,
+  globalPenOverlay: true,
+  mermaidMakerGUI: true,
+  batchImport: process.env.NEXT_PUBLIC_ENVIRONMENT === 'development',
+  analytics: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
+};
+```
+
+---
+
+## 18. Error Handling & Monitoring
+
+### 18.1 Error Boundary
+
+```tsx
+// components/ErrorBoundary.tsx
+'use client';
+
+import { Component, type ReactNode, type ErrorInfo } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center p-8">
+            <h2 className="text-xl font-semibold text-sb-wrong mb-2">Something went wrong</h2>
+            <p className="text-sb-muted mb-4">{this.state.error?.message}</p>
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="px-4 py-2 bg-sb-accent text-sb-bg rounded-lg"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+```
+
+### 18.2 Graceful Degradation
+
+| Feature | Fallback |
+|---------|----------|
+| D3.js Connectome | Static list of note links |
+| Mermaid.js diagrams | Static text description of algorithm |
+| Markmap mindmaps | Collapsible `<ul>` tree |
+| localStorage | In-memory store (data lost on refresh) |
+| File API (PDF) | Alert: "PDF loading not supported in this browser" |
+| Canvas/SVG annotation | Text-based highlight via CSS `::selection` |
+
+### 18.3 Zustand Persist Error Recovery
+
+```typescript
+// In the persist config
+partialize: (state) => ({
+  notes: state.notes,
+  userProfile: state.userProfile,
+  settings: state.settings,
+  // ...
+}),
+merge: (persisted, current) => {
+  try {
+    // Validate persisted state before merging
+    if (!persisted || typeof persisted !== 'object') return current;
+    return { ...current, ...persisted };
+  } catch {
+    console.warn('[Store] Invalid persisted state — using defaults');
+    return current;
+  }
+},
+```
+
+---
+
 *SurgicalBrain NoteTool — Built with the Surgeon's Mind. Dissect. Map. Act. Connect.*

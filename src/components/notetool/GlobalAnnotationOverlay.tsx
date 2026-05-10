@@ -10,6 +10,10 @@ import {
   X,
   Type,
   Hand,
+  Palette,
+  Paintbrush,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
@@ -26,18 +30,30 @@ import {
 const PEN_COLORS = [
   { id: 'amber', color: 'var(--color-sb-accent)' },
   { id: 'red', color: '#ef4444' },
+  { id: 'orange', color: '#f97316' },
   { id: 'green', color: '#22c55e' },
+  { id: 'emerald', color: '#10b981' },
   { id: 'cyan', color: '#06b6d4' },
-  { id: 'white', color: '#ffffff' },
+  { id: 'blue', color: '#3b82f6' },
+  { id: 'violet', color: '#8b5cf6' },
   { id: 'pink', color: '#ec4899' },
+  { id: 'rose', color: '#f43f5e' },
+  { id: 'white', color: '#ffffff' },
+  { id: 'neutral', color: '#9ca3af' },
 ];
 
 const TEXT_HL_COLORS = [
   { id: 'amber', color: 'var(--color-sb-accent)' },
   { id: 'yellow', color: '#fbbf24' },
+  { id: 'orange', color: '#fb923c' },
   { id: 'green', color: '#34d399' },
+  { id: 'emerald', color: '#6ee7b7' },
   { id: 'cyan', color: '#22d3ee' },
+  { id: 'sky', color: '#7dd3fc' },
+  { id: 'blue', color: '#60a5fa' },
+  { id: 'violet', color: '#a78bfa' },
   { id: 'pink', color: '#f472b6' },
+  { id: 'rose', color: '#fda4af' },
   { id: 'red', color: '#f87171' },
 ];
 
@@ -112,6 +128,7 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
   const [dragNote, setDragNote] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [mounted, setMounted] = useState(false);
+  const [stylingBarOpen, setStylingBarOpen] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   
   const toolbarPos = settings.annotationToolbarPosition || 'right';
@@ -297,27 +314,25 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
       setDragNote(noteId);
       const note = stickyNotes.find((n) => n.id === noteId);
       if (note) {
-        const coords = getCoordinates(e);
-        setDragOffset({ x: coords.x - note.x, y: coords.y - note.y });
+        setDragOffset({ x: e.clientX - note.x, y: e.clientY - note.y });
       }
     },
-    [globalPenTool, stickyNotes, getCoordinates]
+    [globalPenTool, stickyNotes]
   );
 
   useEffect(() => {
     if (!dragNote) return;
     const handleMove = (e: globalThis.MouseEvent) => {
-      const coords = getCoordinates(e);
-      updateStickyNote(dragNote, { x: coords.x - dragOffset.x, y: coords.y - dragOffset.y });
+      updateStickyNote(dragNote, { x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
     };
     const handleUp = () => setDragNote(null);
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('mousemove', handleMove, { passive: true });
+    window.addEventListener('mouseup', handleUp, { passive: true });
     return () => {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
-  }, [dragNote, dragOffset, updateStickyNote, getCoordinates]);
+  }, [dragNote, dragOffset, updateStickyNote]);
 
   const getStickyColor = (colorId: string) => STICKY_COLORS.find((c) => c.id === colorId) || STICKY_COLORS[0];
 
@@ -327,10 +342,13 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
 
   const toolbarClasses = cn(
     "fixed z-[100] p-2 bg-sb-bg/95 backdrop-blur-3xl border border-sb-border/80 shadow-2xl shadow-black/80 transition-all duration-300 ease-in-out",
-    toolbarPos === 'right' && "flex-col w-14 h-fit right-6 top-1/2 -translate-y-1/2 rounded-2xl py-4",
-    toolbarPos === 'left' && "flex-col w-14 h-fit left-6 top-1/2 -translate-y-1/2 rounded-2xl py-4",
-    toolbarPos === 'top' && "flex-row items-center h-14 w-fit top-6 left-1/2 -translate-x-1/2 rounded-full px-4",
-    toolbarPos === 'bottom' && "flex-row items-center h-14 w-fit bottom-8 left-1/2 -translate-x-1/2 rounded-full px-4"
+    isLandscape
+      ? "flex-row items-center h-14 w-fit rounded-full px-4"
+      : "flex-col w-14 h-fit rounded-2xl py-4",
+    toolbarPos === 'right' && "right-6 top-1/2 -translate-y-1/2",
+    toolbarPos === 'left' && "left-6 top-1/2 -translate-y-1/2",
+    toolbarPos === 'top' && "top-6 left-1/2 -translate-x-1/2",
+    toolbarPos === 'bottom' && "bottom-8 left-1/2 -translate-x-1/2"
   );
 
   let overlayCursor = 'default';
@@ -424,6 +442,8 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
             }}
             onMouseDown={(e) => {
               if (!showToolbar) return;
+              // Don't drag if clicking on textarea — allow text editing
+              if ((e.target as HTMLElement).tagName === 'TEXTAREA') return;
               if (globalPenTool === 'eraser') {
                 e.stopPropagation();
                 removeStickyNote(note.id);
@@ -433,7 +453,14 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-2 py-1 border-b" style={{ borderColor: colorSet.border, opacity: 0.7 }}>
+            <div
+              className="flex items-center justify-between px-2 py-1 border-b cursor-grab active:cursor-grabbing"
+              style={{ borderColor: colorSet.border, opacity: 0.7 }}
+              onMouseDown={(e) => {
+                if (!showToolbar || globalPenTool === 'eraser') return;
+                handleNoteMouseDown(e, note.id);
+              }}
+            >
               <span className="text-[9px] font-medium" style={{ color: colorSet.text }}>Note</span>
               <button onClick={(e) => { e.stopPropagation(); removeStickyNote(note.id); }} className="rounded-full p-0.5 hover:bg-black/10 transition-colors" style={{ color: colorSet.text }}>
                 <X className="h-3 w-3" />
@@ -461,7 +488,7 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className={cn("flex gap-1", isLandscape ? "flex-row items-center" : "flex-col")}>
+            <div className={cn("flex gap-1 items-center", isLandscape ? "flex-row" : "flex-col")}>
               {[
                 { id: 'pan', icon: Hand, label: 'Pan' },
                 { id: 'pen', icon: Pencil, label: 'Pen' },
@@ -483,46 +510,59 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
               ))}
             </div>
 
-            <div className={cn("bg-sb-border/40", isLandscape ? "w-px h-8 mx-2.5" : "w-8 h-px my-2.5 mx-auto")} />
-
-            <div className={cn("flex items-center gap-2", isLandscape ? "flex-row" : "flex-col")}>
-              {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && (
-                <>
-                  <div className={cn("grid gap-1.5", isLandscape ? "grid-cols-3" : "grid-cols-2")}>
-                    {(globalPenTool === 'pen' ? PEN_COLORS : TEXT_HL_COLORS).map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => globalPenTool === 'pen' ? setDrawingColor(c.color) : setHighlightColor(c.color)}
-                        className={cn("w-3.5 h-3.5 rounded-full", (globalPenTool === 'pen' ? drawingColor : highlightColor) === c.color ? "ring-2 ring-white" : "opacity-60")}
-                        style={{ backgroundColor: c.color }}
-                      />
-                    ))}
+            {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && stylingBarOpen && (
+              <div className={cn("flex items-center", isLandscape ? "flex-row gap-1.5 mr-2" : "flex-col gap-1")}>
+                {/* Brush: -, circle, + */}
+                <div className={cn("flex items-center gap-0.5", isLandscape ? "flex-row" : "flex-col")}>
+                  <button onClick={() => setDrawingBrushSize(Math.max(2, drawingBrushSize - 2))} className="p-0.5 rounded text-sb-muted hover:text-sb-text">
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <div className="flex items-center justify-center shrink-0" style={{ width: 20, height: 20 }}>
+                    <div className="rounded-full transition-all" style={{
+                      width: drawingBrushSize * 0.5,
+                      height: drawingBrushSize * 0.5,
+                      backgroundColor: globalPenTool === 'pen' ? drawingColor : highlightColor,
+                    }} />
                   </div>
-                  <div 
-                    className={cn("bg-sb-surface2/80 rounded-lg px-2 flex items-center justify-center border border-sb-border/50", isLandscape ? "w-16 h-6" : "w-6 h-16")}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                    }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Slider
-                      orientation={isLandscape ? "horizontal" : "vertical"}
-                      min={2} max={40} step={1}
-                      value={[drawingBrushSize]}
-                      onValueChange={(val) => setDrawingBrushSize(val[0])}
-                      className="pointer-events-auto cursor-pointer"
+                  <button onClick={() => setDrawingBrushSize(Math.min(40, drawingBrushSize + 2))} className="p-0.5 rounded text-sb-muted hover:text-sb-text">
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+
+                <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-6" : "w-6 h-px")} />
+
+                {/* Color swatches */}
+                <div className={cn("flex gap-1", isLandscape ? "flex-row" : "flex-col")}>
+                  {(globalPenTool === 'pen' ? PEN_COLORS : TEXT_HL_COLORS).slice(0, isLandscape ? 12 : 6).map((c) => (
+                    <button key={c.id} onClick={() => globalPenTool === 'pen' ? setDrawingColor(c.color) : setHighlightColor(c.color)}
+                      className={cn("w-3.5 h-3.5 rounded-full shrink-0",
+                        (globalPenTool === 'pen' ? drawingColor : highlightColor) === c.color ? "ring-[1.5px] ring-white scale-110" : "opacity-50 hover:opacity-80"
+                      )}
+                      style={{ backgroundColor: c.color }} title={c.id}
                     />
-                  </div>
-                </>
-              )}
-            </div>
+                  ))}
+                  <label className="relative cursor-pointer shrink-0 flex items-center justify-center w-3.5 h-3.5 rounded-full border border-sb-border/50 hover:border-sb-accent/60 bg-sb-surface2/60">
+                    <input type="color" className="absolute inset-0 opacity-0 cursor-pointer"
+                      value={(globalPenTool === 'pen' ? drawingColor : highlightColor).replace('var(--color-sb-accent)', '#f0a500')}
+                      onChange={(e) => { const h = e.target.value; if (globalPenTool === 'pen') setDrawingColor(h); else setHighlightColor(h); }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Plus className="h-2 w-2 text-sb-muted" />
+                  </label>
+                </div>
+              </div>
+            )}
 
-            <div className={cn("bg-sb-border/40", isLandscape ? "w-px h-8 mx-2.5" : "w-8 h-px my-2.5 mx-auto")} />
+            {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && (
+              <button onClick={() => setStylingBarOpen(!stylingBarOpen)}
+                className={cn("p-2 rounded-xl transition-all shrink-0", stylingBarOpen ? "bg-sb-surface2 text-sb-accent" : "text-sb-muted hover:text-sb-text")}
+                title="Color & Size"
+              >
+                <Paintbrush className="h-4 w-4" />
+              </button>
+            )}
+
+            <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-8 mx-1.5" : "w-8 h-px my-1.5 mx-auto")} />
 
             <button onClick={clearAllAnnotations} className="p-1.5 text-sb-wrong hover:bg-sb-wrong/10 rounded-lg">
               <Trash2 className="h-4 w-4" />
