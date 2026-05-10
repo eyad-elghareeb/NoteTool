@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useNoteToolStore, type NoteData } from '@/stores/notetool-store';
+import { useNoteToolStore, type NoteData, type NoteSection } from '@/stores/notetool-store';
 import {
   acuteHeartFailureNote,
   copdExacerbationNote,
@@ -108,6 +108,7 @@ export default function Home() {
     setPdfFile,
     removeSectionFromNote,
     updateSectionInNote,
+    updateNote,
     setMode,
   } = store;
 
@@ -665,7 +666,8 @@ export default function Home() {
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 relative">
+        <GlobalAnnotationOverlay />
         {/* ─── Note Header --- */}
         <div className="space-y-4">
           {/* Big serif title */}
@@ -777,12 +779,106 @@ export default function Home() {
                 </div>
                 <div className="flex-1 rounded-2xl border border-sb-border overflow-hidden bg-sb-surface shadow-2xl">
                   <DeveloperView 
-                    initialContent={activeNote.sections
-                      .filter(s => s.type === 'content')
-                      .map(s => `## ${s.title}\n${typeof s.content === 'string' ? s.content : ''}`)
-                      .join('\n\n')} 
-                    onContentChange={(newContent) => {
-                       // Logic to update note if needed, but for now just pass it
+                    sections={activeNote.sections.filter(s => s.type !== 'asset' && s.type !== 'pdf-embed')}
+                    initialContent={(() => {
+                      // Serialize metadata as YAML-like frontmatter
+                      const metadata = [
+                        '---',
+                        `id: ${activeNote.id}`,
+                        `title: ${activeNote.title}`,
+                        `folder: ${activeNote.folder || ''}`,
+                        `specialty: ${activeNote.specialty || ''}`,
+                        `summary: ${activeNote.summary || ''}`,
+                        `category: ${activeNote.category || ''}`,
+                        '---',
+                        ''
+                      ].join('\n');
+
+                      // Serialize only content/tabs/mermaid sections for editing
+                      const sectionsMarkdown = activeNote.sections
+                        .filter(s => s.type !== 'asset' && s.type !== 'pdf-embed')
+                        .map(s => {
+                          let inner = '';
+                          if (s.type === 'content') inner = s.content as string;
+                          else if (s.type === 'tabs') {
+                            const data = s.content as { tabs: { label: string, content: string }[] };
+                            inner = (data?.tabs || []).map(t => `### Tab: ${t.label}\n${t.content}`).join('\n\n');
+                          } else if (s.type === 'mermaid' || s.type === 'algorithm') {
+                            const data = s.content as { code: string };
+                            inner = `\`\`\`mermaid\n${data?.code || ''}\n\`\`\``;
+                          } else if (s.type === 'mcq') {
+                            inner = JSON.stringify(s.content, null, 2);
+                          } else {
+                            inner = typeof s.content === 'string' ? s.content : JSON.stringify(s.content, null, 2);
+                          }
+                          return `## [${s.type}] ${s.title}\n${inner}`;
+                        }).join('\n\n<!-- section-break -->\n\n');
+
+                      return metadata + sectionsMarkdown;
+                    })()} 
+                    onContentChange={(newMarkdown) => {
+                       // Parse metadata
+                       const frontmatterMatch = newMarkdown.match(/^---\n([\s\S]*?)\n---\n/);
+                       let metaUpdates: any = {};
+                       let contentBody = newMarkdown;
+
+                       if (frontmatterMatch) {
+                         contentBody = newMarkdown.replace(frontmatterMatch[0], '');
+                         const metaLines = frontmatterMatch[1].split('\n');
+                         metaLines.forEach(line => {
+                           const [key, ...val] = line.split(':');
+                           if (key && val) metaUpdates[key.trim()] = val.join(':').trim();
+                         });
+                       }
+
+                       // Parse the markdown back into sections
+                       const sectionBlocks = contentBody.split('\n\n<!-- section-break -->\n\n');
+                       const updatedSections: NoteSection[] = sectionBlocks.map((block, idx) => {
+                         const lines = block.split('\n');
+                         const headerLine = lines.find(l => l.startsWith('## [')) || '';
+                         const typeMatch = headerLine.match(/## \[(.*)\] (.*)/);
+                         
+                         const type = typeMatch ? typeMatch[1] : 'content';
+                         const title = typeMatch ? typeMatch[2] : 'Untitled Section';
+                         
+                         const headerIdx = lines.indexOf(headerLine);
+                         let rawContent = lines.slice(headerIdx + 1).join('\n').trim();
+                         
+                         let finalContent: any = rawContent;
+                         
+                         if (type === 'tabs') {
+                           // Robust Tab Parsing
+                           const tabs: { id: string, label: string, content: string }[] = [];
+                           const tabRegex = /### Tab:\s*(.*)\n([\s\S]*?)(?=\n### Tab:|$)/g;
+                           let m;
+                           while ((m = tabRegex.exec(rawContent)) !== null) {
+                             tabs.push({ id: `tab-${tabs.length}`, label: m[1].trim(), content: m[2].trim() });
+                           }
+                           if (tabs.length === 0 && rawContent.trim()) {
+                             tabs.push({ id: `tab-0`, label: 'General', content: rawContent.trim() });
+                           }
+                           finalContent = { tabs };
+                         } else if (type === 'mermaid' || type === 'algorithm') {
+                           const codeMatch = rawContent.match(/```mermaid\n([\s\S]*?)\n```/);
+                           finalContent = { code: codeMatch ? codeMatch[1].trim() : rawContent, title };
+                         } else if (type === 'mcq') {
+                           try { finalContent = JSON.parse(rawContent); } catch(e) { finalContent = rawContent; }
+                         }
+                         
+                         return {
+                           id: activeNote.sections.filter(s => s.type !== 'asset' && s.type !== 'pdf-embed')[idx]?.id || `sec-${Date.now()}-${idx}`,
+                           title,
+                           type,
+                           content: finalContent
+                         } as NoteSection;
+                       });
+                       
+                       // Merge back the sections that weren't editable (assets/pdfs)
+                       const nonEditableSections = activeNote.sections.filter(s => s.type === 'asset' || s.type === 'pdf-embed');
+                       updateNote(activeNote.id, { 
+                         ...metaUpdates,
+                         sections: [...updatedSections, ...nonEditableSections] 
+                       });
                     }}
                   />
                 </div>
@@ -1099,7 +1195,6 @@ export default function Home() {
           <ContextMenuTrigger asChild>
             <main className="flex-1 overflow-auto" id="note-scroll-container">
               <div className="relative min-h-full">
-                <GlobalAnnotationOverlay />
                 <div
                   className={cn(
                     'max-w-5xl mx-auto p-6',

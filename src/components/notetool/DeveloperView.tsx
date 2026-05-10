@@ -29,11 +29,12 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { MermaidMakerGUI } from './MermaidMakerGUI';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface DeveloperViewProps {
   initialContent: string;
   onContentChange?: (content: string) => void;
+  sections?: { id: string; title: string; type: string }[];
 }
 
 // ─── Toolbar Tool Definitions ──────────────────────────────────────────
@@ -105,50 +106,51 @@ const TEXT_TOOLS: ToolbarTool[] = [
 const INSERT_TOOLS: ToolbarTool[] = [
   {
     id: 'table',
-    label: 'Table',
+    label: 'Medical Table',
     icon: <Table className="h-3.5 w-3.5" />,
     type: 'insert',
-    template: `<table style="width: 100%; border-collapse: collapse;">
-  <thead>
-    <tr style="background: var(--color-sb-surface3);">
-      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Header 1</th>
-      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Header 2</th>
-      <th style="padding: 8px; text-align: left; color: var(--color-sb-accent); border: 1px solid var(--color-sb-border);">Header 3</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 1</td>
-      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 2</td>
-      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 3</td>
-    </tr>
-    <tr style="background: var(--color-sb-surface2);">
-      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 4</td>
-      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 5</td>
-      <td style="padding: 8px; color: var(--color-sb-muted); border: 1px solid var(--color-sb-border);">Cell 6</td>
-    </tr>
-  </tbody>
-</table>`,
+    template: `
+| Clinical Feature | Normal Range | Patient Finding | Interpretation |
+|:-----------------|:-------------|:----------------|:---------------|
+| Heart Rate (bpm) | 60 - 100     | 112             | Tachycardia    |
+| BP (mmHg)        | < 120/80     | 145/95          | Hypertension   |
+| SpO2 (%)         | > 94%        | 89% (RA)        | Hypoxemia      |
+| Temp (°C)        | 36.5 - 37.5  | 38.4            | Pyrexia        |
+`,
   },
   {
     id: 'mcq',
-    label: 'MCQ',
+    label: 'MCQ Block',
     icon: <HelpCircle className="h-3.5 w-3.5" />,
     type: 'insert',
-    template: `<div class="mcq-block" style="background: var(--color-sb-surface2); border: 1px solid var(--color-sb-accent); border-radius: 12px; padding: 16px; margin: 12px 0;">
-  <p style="color: var(--color-sb-accent); font-weight: 600; margin-bottom: 12px;">Question:</p>
-  <p style="color: var(--color-sb-text); margin-bottom: 12px;">Your question here?</p>
-  <ul style="list-style: none; padding: 0; margin: 0;">
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">A. Option 1</li>
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">B. Option 2</li>
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">C. Option 3</li>
-    <li style="padding: 8px 12px; margin: 4px 0; border-radius: 8px; background: var(--color-sb-bg); border: 1px solid var(--color-sb-border); color: var(--color-sb-muted);">D. Option 4</li>
-  </ul>
-  <details style="margin-top: 12px;">
-    <summary style="color: var(--color-sb-accent); cursor: pointer; font-size: 0.85em;">Show Answer</summary>
-    <p style="color: #3fb950; margin-top: 8px; padding: 8px; background: var(--color-sb-bg); border-radius: 8px;">Correct answer and explanation here.</p>
-  </details>
-</div>`,
+    template: `
+\`\`\`mcq
+{
+  "question": "What is the primary diagnostic finding in this condition?",
+  "options": [
+    "Elevated troponin",
+    "ST-segment elevation",
+    "Prolonged PR interval",
+    "T-wave inversion"
+  ],
+  "correctIndex": 1,
+  "explanation": "ST-segment elevation is diagnostic of STEMI in the clinical context of chest pain."
+}
+\`\`\`
+`,
+  },
+  {
+    id: 'tab',
+    label: 'Tab Section',
+    icon: <Layers className="h-3.5 w-3.5" />,
+    type: 'insert',
+    template: `
+### Tab: Diagnosis
+Content for diagnosis tab...
+
+### Tab: Management
+Content for management tab...
+`,
   },
   {
     id: 'flashcard',
@@ -186,7 +188,7 @@ graph TD
   },
 ];
 
-export function DeveloperView({ initialContent, onContentChange }: DeveloperViewProps) {
+export function DeveloperView({ initialContent, onContentChange, sections = [] }: DeveloperViewProps) {
   const [code, setCode] = useState(initialContent);
   const [preview, setPreview] = useState(initialContent);
   const [isMermaidMakerOpen, setIsMermaidMakerOpen] = useState(false);
@@ -260,13 +262,13 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
     });
   }, [code]);
 
-  const handleMermaidSave = (htmlBlock: string) => {
+  const handleMermaidSave = (mermaidCode: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const start = textarea.selectionStart;
     const beforeSelection = code.substring(0, start);
     const afterSelection = code.substring(textarea.selectionEnd);
-    const newCode = beforeSelection + `\n${htmlBlock}\n` + afterSelection;
+    const newCode = beforeSelection + `\n\`\`\`mermaid\n${mermaidCode}\n\`\`\`\n` + afterSelection;
     setCode(newCode);
     setIsMermaidMakerOpen(false);
   };
@@ -316,8 +318,44 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
       </div>
 
       {/* ─── Split Pane Editor ───────────────────────────────────────── */}
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
+      <div className="flex-1 min-h-0 flex">
+        {/* Section Selector Sidebar */}
+        <div className="w-48 flex-shrink-0 bg-slate-900/50 border-r border-violet-800/20 overflow-y-auto scrollbar-thin">
+          <div className="px-3 py-2 border-b border-violet-800/10">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-400/60">Sections</span>
+          </div>
+          <div className="p-1 space-y-0.5">
+            {sections.map((sec) => (
+              <button
+                key={sec.id}
+                onClick={() => {
+                  const textarea = textareaRef.current;
+                  if (!textarea) return;
+                  // Improved search logic
+                  const cleanTitle = sec.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  const regex = new RegExp(`^#+\\s+\\[.*?\\]\\s+${cleanTitle}`, 'm');
+                  const match = code.match(regex);
+                  
+                  if (match && match.index !== undefined) {
+                    textarea.focus();
+                    textarea.setSelectionRange(match.index, match.index + match[0].length);
+                    
+                    // Improved scrolling
+                    const lines = code.substring(0, match.index).split('\n');
+                    const lineHeight = 20; 
+                    textarea.scrollTop = Math.max(0, (lines.length - 2) * lineHeight);
+                  }
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-violet-600/10 transition-colors group"
+              >
+                <div className="text-[11px] font-medium text-violet-300 truncate">{sec.title || sec.type}</div>
+                <div className="text-[9px] text-violet-500/70 capitalize">{sec.type}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* Raw Editor */}
           <ResizablePanel defaultSize={50} minSize={30}>
             <div className="h-full flex flex-col bg-slate-950">
@@ -332,7 +370,7 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
                 ref={textareaRef}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="flex-1 w-full bg-transparent p-4 text-xs font-mono text-emerald-300 resize-none border-none outline-none leading-relaxed"
+                className="flex-1 w-full bg-transparent p-4 text-xs font-mono text-emerald-300 resize-none border-none outline-none leading-relaxed scroll-smooth"
                 spellCheck={false}
                 placeholder="Write HTML/JS here..."
               />
@@ -352,10 +390,10 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
                 </Badge>
               </div>
               <div
-                className="flex-1 overflow-auto p-4 prose prose-sm prose-invert max-w-none"
+                className="flex-1 overflow-auto p-6 prose prose-sm prose-invert max-w-none prose-table:border prose-table:border-sb-border prose-th:bg-sb-surface2 prose-th:p-2 prose-td:p-2 prose-td:border prose-td:border-sb-border"
                 style={{ color: 'var(--color-sb-text)' }}
               >
-                <ReactMarkdown>{code}</ReactMarkdown>
+                <MarkdownRenderer content={code} />
               </div>
             </div>
           </ResizablePanel>
@@ -366,7 +404,7 @@ export function DeveloperView({ initialContent, onContentChange }: DeveloperView
         <DialogContent className="max-w-[900px] p-0 border-none bg-transparent">
           <DialogTitle className="sr-only">Visual Mermaid Maker</DialogTitle>
           <MermaidMakerGUI 
-            onSave={handleMermaidSave} 
+            onSave={(data) => handleMermaidSave(data.code)} 
             onCancel={() => setIsMermaidMakerOpen(false)} 
           />
         </DialogContent>

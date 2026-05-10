@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useNoteToolStore, type ViewPanel } from '@/stores/notetool-store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,36 @@ import {
   Brain,
   X,
   Home,
+  FolderPlus,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
+  MoreVertical,
+  Trash2,
+  Copy,
+  Edit2,
 } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -95,7 +124,20 @@ export function Sidebar() {
     setSearchQuery,
     notes,
     setNewNoteModalOpen,
+    folders: storeFolders,
+    addFolder,
+    renameFolder,
+    deleteFolder,
+    moveNoteToFolder,
+    duplicateNote,
+    deleteNote,
   } = useNoteToolStore();
+
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({ 'Uncategorized': true });
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isAddingFolder, setIsAddingFolder] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
+  const [deleteFolderNotes, setDeleteFolderNotes] = useState(false);
 
   // ─── Filtered Notes (search by title, specialty, tags, content) ──
   const filteredNotes = useMemo(() => {
@@ -118,6 +160,19 @@ export function Sidebar() {
       return false;
     });
   }, [notes, searchQuery]);
+  
+  const folders = useMemo(() => {
+    return filteredNotes.reduce((acc, note) => {
+      const folder = note.folder || 'Uncategorized';
+      if (!acc[folder]) acc[folder] = [];
+      acc[folder].push(note);
+      return acc;
+    }, {} as Record<string, typeof notes>);
+  }, [filteredNotes]);
+
+  const toggleFolder = (folder: string) => {
+    setExpandedFolders(prev => ({ ...prev, [folder]: !prev[folder] }));
+  };
 
   // ─── Linked Notes for active note ────────────────────────────────
   const activeNote = notes.find((n) => n.id === activeNoteId);
@@ -246,37 +301,145 @@ export function Sidebar() {
 
                 {/* ── Local Archives ────────────────────────────────── */}
                 <div>
-                  <SectionLabel count={filteredNotes.length}>
-                    Local Archives
-                  </SectionLabel>
-                  <div className="space-y-px">
-                    {filteredNotes.map((note) => (
-                      <button
-                        key={note.id}
-                        onClick={() => handleNoteClick(note.id)}
-                        className={cn(
-                          'w-full flex items-center gap-2.5 rounded-md px-2 py-[7px] text-[11px] transition-all duration-100 relative group text-left',
-                          activeNoteId === note.id
-                            ? 'text-sb-accent bg-sb-accent/8'
-                            : 'text-sb-muted hover:bg-sb-surface hover:text-sb-text'
-                        )}
+                  <div className="flex items-center justify-between mb-1">
+                    <SectionLabel count={filteredNotes.length}>
+                      Local Archives
+                    </SectionLabel>
+                    <button 
+                      onClick={() => setIsAddingFolder(true)}
+                      className="p-1 hover:text-sb-accent text-sb-muted transition-colors"
+                      title="New Folder"
+                    >
+                      <FolderPlus className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  {isAddingFolder && (
+                    <div className="px-2 mb-2 flex items-center gap-1 animate-in slide-in-from-top-1 duration-200">
+                      <Input
+                        autoFocus
+                        placeholder="Folder name..."
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (newFolderName.trim()) {
+                              addFolder(newFolderName.trim());
+                              setNewFolderName('');
+                              setIsAddingFolder(false);
+                            }
+                          } else if (e.key === 'Escape') {
+                            setIsAddingFolder(false);
+                            setNewFolderName('');
+                          }
+                        }}
+                        className="h-6 text-[10px] bg-sb-surface border-sb-border"
+                      />
+                      <button 
+                        onClick={() => {
+                          if (newFolderName.trim()) {
+                            addFolder(newFolderName.trim());
+                            setNewFolderName('');
+                            setIsAddingFolder(false);
+                          }
+                        }}
+                        className="text-sb-accent"
                       >
-                        {/* Left accent bar */}
-                        <div
-                          className={cn(
-                            'absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150',
-                            activeNoteId === note.id
-                              ? 'h-4 bg-sb-accent'
-                              : 'h-0 bg-transparent group-hover:h-2 group-hover:bg-sb-border'
-                          )}
-                        />
-                        <span className="flex-shrink-0">{getSpecialtyIcon(note.specialty)}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate leading-tight">{note.title}</p>
-                          <p className="text-[9px] text-[#484f58] truncate leading-tight mt-0.5">{note.specialty}</p>
-                        </div>
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
-                    ))}
+                      <button onClick={() => setIsAddingFolder(false)} className="text-sb-muted">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-px">
+                    {/* Ensure all folders from store are shown even if empty */}
+                    {[...new Set([...storeFolders, ...Object.keys(folders)])].map((folderName) => {
+                      const folderNotes = folders[folderName] || [];
+                      return (
+                        <div key={folderName} className="space-y-px">
+                          <ContextMenu>
+                            <ContextMenuTrigger>
+                              <button 
+                                onClick={() => toggleFolder(folderName)}
+                                className="w-full flex items-center gap-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-sb-muted hover:text-sb-text transition-colors group"
+                              >
+                                {expandedFolders[folderName] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                <FolderOpen className={cn("h-3 w-3 transition-colors", folderNotes.length > 0 ? "text-sb-accent/50" : "text-sb-muted/30")} />
+                                <span className="truncate flex-1 text-left">{folderName}</span>
+                                <span className="text-[8px] font-normal opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
+                                  {folderNotes.length}
+                                </span>
+                              </button>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="bg-sb-surface border-sb-border text-sb-text">
+                              <ContextMenuItem onClick={() => setFolderToDelete(folderName)} className="text-sb-wrong hover:text-sb-wrong hover:bg-sb-wrong/10">
+                                <Trash2 className="h-3 w-3 mr-2" /> Delete Folder
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+
+                          {expandedFolders[folderName] && (
+                            <div className="space-y-px ml-1 border-l border-sb-border/50 pl-1">
+                              {folderNotes.map((note) => (
+                                <ContextMenu key={note.id}>
+                                  <ContextMenuTrigger>
+                                    <button
+                                      onClick={() => handleNoteClick(note.id)}
+                                      className={cn(
+                                        'w-full flex items-center gap-2.5 rounded-md px-2 py-[7px] text-[11px] transition-all duration-100 relative group text-left',
+                                        activeNoteId === note.id
+                                          ? 'text-sb-accent bg-sb-accent/8'
+                                          : 'text-sb-muted hover:bg-sb-surface hover:text-sb-text'
+                                      )}
+                                    >
+                                      <div
+                                        className={cn(
+                                          'absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150',
+                                          activeNoteId === note.id
+                                            ? 'h-4 bg-sb-accent'
+                                            : 'h-0 bg-transparent group-hover:h-2 group-hover:bg-sb-border'
+                                        )}
+                                      />
+                                      <span className="flex-shrink-0">{getSpecialtyIcon(note.specialty)}</span>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="font-medium truncate leading-tight">{note.title}</p>
+                                        <p className="text-[9px] text-[#484f58] truncate leading-tight mt-0.5">{note.specialty}</p>
+                                      </div>
+                                    </button>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent className="bg-sb-surface border-sb-border text-sb-text">
+                                    <ContextMenuItem onClick={() => duplicateNote(note.id)}>
+                                      <Copy className="h-3 w-3 mr-2" /> Duplicate
+                                    </ContextMenuItem>
+                                    <ContextMenuSub>
+                                      <ContextMenuSubTrigger>
+                                        <FolderOpen className="h-3 w-3 mr-2" /> Move to Folder
+                                      </ContextMenuSubTrigger>
+                                      <ContextMenuSubContent className="bg-sb-surface border-sb-border text-sb-text">
+                                        {storeFolders.filter(f => f !== folderName).map(f => (
+                                          <ContextMenuItem key={f} onClick={() => moveNoteToFolder(note.id, f)}>
+                                            {f}
+                                          </ContextMenuItem>
+                                        ))}
+                                        <ContextMenuItem onClick={() => moveNoteToFolder(note.id, '')}>
+                                          Uncategorized
+                                        </ContextMenuItem>
+                                      </ContextMenuSubContent>
+                                    </ContextMenuSub>
+                                    <ContextMenuSeparator className="bg-sb-border" />
+                                    <ContextMenuItem onClick={() => deleteNote(note.id)} className="text-sb-wrong hover:text-sb-wrong hover:bg-sb-wrong/10">
+                                      <Trash2 className="h-3 w-3 mr-2" /> Delete Note
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     {filteredNotes.length === 0 && (
                       <div className="px-2 py-4 text-center">
                         <p className="text-[10px] text-[#484f58]">
@@ -454,6 +617,48 @@ export function Sidebar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Folder Deletion Confirmation */}
+      <AlertDialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
+        <AlertDialogContent className="bg-sb-surface border-sb-border text-sb-text">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="serif-title">Delete Folder?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sb-muted">
+              Are you sure you want to delete the folder <strong>"{folderToDelete}"</strong>?
+              <div className="mt-4 flex items-center gap-2 text-sb-text">
+                <Checkbox 
+                  id="delete-notes" 
+                  checked={deleteFolderNotes} 
+                  onCheckedChange={(checked) => setDeleteFolderNotes(!!checked)}
+                />
+                <label htmlFor="delete-notes" className="text-xs font-medium cursor-pointer">
+                  Also delete all notes inside this folder
+                </label>
+              </div>
+              {!deleteFolderNotes && (
+                <p className="mt-2 text-[10px] text-sb-accent/70 italic">
+                  Note: If unchecked, notes will be moved to "Uncategorized".
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-sb-bg border-sb-border hover:bg-sb-surface2">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (folderToDelete) {
+                  deleteFolder(folderToDelete, deleteFolderNotes);
+                  setFolderToDelete(null);
+                  setDeleteFolderNotes(false);
+                }
+              }}
+              className="bg-sb-wrong text-white hover:bg-sb-wrong/90"
+            >
+              Delete Folder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

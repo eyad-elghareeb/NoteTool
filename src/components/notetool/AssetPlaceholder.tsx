@@ -19,93 +19,77 @@ interface AssetPlaceholderProps {
 }
 
 export function AssetPlaceholder({ data }: AssetPlaceholderProps) {
+  const assetUrl = data.path || (data as any).url;
+  const isPdf = data.type === 'pdf';
+  const isVideo = data.type === 'video';
+  const isImage = data.type === 'image';
+
   // ─── PDF Embedding ────────────────────────────────────────────────
-  if (data.type === 'pdf') {
+  if (isPdf) {
     return (
-      <Card className="border-border/30 bg-card/40 overflow-hidden">
+      <Card className="border-sb-border/30 bg-sb-surface/40 overflow-hidden">
         <CardContent className="p-0">
-          {/* PDF viewer area */}
-          <div className="relative bg-sb-bg border-b border-border/20">
-            <iframe
-              src={data.path}
-              className="w-full h-[500px] rounded-none"
-              title={`PDF: ${data.filename}`}
-              style={{ border: 'none' }}
-            />
-            {/* PDF overlay controls */}
+          <div className="relative bg-sb-bg border-b border-sb-border/20">
+            {assetUrl ? (
+              <iframe
+                src={assetUrl}
+                className="w-full h-[600px] rounded-none"
+                title={`PDF: ${data.filename || 'Document'}`}
+                style={{ border: 'none' }}
+              />
+            ) : (
+              <div className="h-[300px] flex flex-col items-center justify-center text-sb-muted gap-3">
+                <FileText className="h-10 w-10 opacity-20" />
+                <p className="text-xs">No PDF data provided</p>
+              </div>
+            )}
             <div className="absolute top-2 right-2 flex gap-1">
-              <Badge variant="outline" className="text-[9px] border-border/30 bg-background/80 backdrop-blur-sm text-sb-accent">
+              <Badge variant="outline" className="text-[9px] border-sb-border/30 bg-sb-bg/80 backdrop-blur-sm text-sb-accent">
                 PDF
               </Badge>
-              <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-background/90">
-                <ZoomIn className="h-3 w-3" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-background/90">
-                <Download className="h-3 w-3" />
-              </Button>
             </div>
           </div>
-          {/* Caption */}
-          <div className="p-3 bg-muted/20">
-            <p className="text-xs text-muted-foreground leading-relaxed italic">
-              {data.caption}
-            </p>
-          </div>
+          {data.caption && (
+            <div className="p-3 bg-sb-surface/20">
+              <p className="text-xs text-sb-muted leading-relaxed italic">{data.caption}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
   }
 
   // ─── Video Embedding ──────────────────────────────────────────────
-  if (data.type === 'video') {
+  if (isVideo) {
     return (
-      <Card className="border-border/30 bg-card/40 overflow-hidden">
+      <Card className="border-sb-border/30 bg-sb-surface/40 overflow-hidden">
         <CardContent className="p-0">
-          {/* Video placeholder area */}
-          <div className="relative aspect-video bg-slate-900/80 flex items-center justify-center border-b border-border/20">
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-muted/40 flex items-center justify-center mx-auto">
-                <Video className="h-8 w-8 text-muted-foreground/50" />
+          <div className="relative aspect-video bg-black/40 flex items-center justify-center border-b border-sb-border/20">
+            {assetUrl ? (
+              <video 
+                src={assetUrl} 
+                controls 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-sb-surface2/40 flex items-center justify-center mx-auto">
+                  <Video className="h-8 w-8 text-sb-muted/50" />
+                </div>
+                <p className="text-xs text-sb-muted/70 font-mono">Missing Video Source</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground/70 font-mono">{data.filename}</p>
-                <p className="text-[10px] text-muted-foreground/50 mt-1">
-                  {data.path}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-dashed border-border/40 text-muted-foreground text-xs"
-              >
-                <Video className="h-3 w-3 mr-1" />
-                Upload Video
-              </Button>
-            </div>
-
-            {/* Asset overlay controls */}
+            )}
             <div className="absolute top-2 right-2 flex gap-1">
-              <Badge variant="outline" className="text-[9px] border-border/30 bg-background/80 backdrop-blur-sm text-rose-400">
+              <Badge variant="outline" className="text-[9px] border-sb-border/30 bg-sb-bg/80 backdrop-blur-sm text-rose-400 font-bold">
                 VIDEO
               </Badge>
             </div>
-
-            <div className="absolute bottom-2 right-2 flex gap-1">
-              <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm">
-                <ZoomIn className="h-3 w-3" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm">
-                <Download className="h-3 w-3" />
-              </Button>
+          </div>
+          {data.caption && (
+            <div className="p-3 bg-sb-surface/20">
+              <p className="text-xs text-sb-muted leading-relaxed italic">{data.caption}</p>
             </div>
-          </div>
-
-          {/* Caption */}
-          <div className="p-3 bg-muted/20">
-            <p className="text-xs text-muted-foreground leading-relaxed italic">
-              {data.caption}
-            </p>
-          </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -113,53 +97,47 @@ export function AssetPlaceholder({ data }: AssetPlaceholderProps) {
 
   // ─── Image (default) ──────────────────────────────────────────────
   return (
-    <Card className="border-border/30 bg-card/40 overflow-hidden">
+    <Card className="border-sb-border/30 bg-sb-surface/40 overflow-hidden">
       <CardContent className="p-0">
-        {/* Image placeholder area */}
-        <div className="relative aspect-[4/3] bg-slate-900/80 flex items-center justify-center border-b border-border/20">
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-muted/40 flex items-center justify-center mx-auto">
-              <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
+        <div className="relative min-h-[200px] bg-black/20 flex items-center justify-center border-b border-sb-border/20">
+          {assetUrl ? (
+            <img 
+              src={assetUrl} 
+              alt={data.caption || 'Clinical Image'} 
+              className="w-full h-auto max-h-[600px] object-contain block mx-auto"
+              loading="lazy"
+            />
+          ) : (
+            <div className="text-center space-y-3 p-8">
+              <div className="w-16 h-16 rounded-full bg-sb-surface2/40 flex items-center justify-center mx-auto">
+                <ImagePlus className="h-8 w-8 text-sb-muted/50" />
+              </div>
+              <p className="text-xs text-sb-muted/70 font-mono">Missing Image Source</p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground/70 font-mono">{data.filename}</p>
-              <p className="text-[10px] text-muted-foreground/50 mt-1">
-                {data.path}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-dashed border-border/40 text-muted-foreground text-xs"
-            >
-              <ImagePlus className="h-3 w-3 mr-1" />
-              Upload Image
-            </Button>
-          </div>
+          )}
 
-          {/* Asset overlay controls */}
           <div className="absolute top-2 right-2 flex gap-1">
-            <Badge variant="outline" className="text-[9px] border-border/30 bg-background/80 backdrop-blur-sm">
-              {data.type.toUpperCase()}
+            <Badge variant="outline" className="text-[9px] border-sb-border/30 bg-sb-bg/80 backdrop-blur-sm text-sb-accent font-bold">
+              IMAGE
             </Badge>
-          </div>
-
-          <div className="absolute bottom-2 right-2 flex gap-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm">
-              <ZoomIn className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 bg-background/80 backdrop-blur-sm">
-              <Download className="h-3 w-3" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 bg-sb-bg/80 backdrop-blur-sm hover:bg-sb-bg"
+              onClick={() => assetUrl && window.open(assetUrl, '_blank')}
+            >
+              <Eye className="h-3 w-3" />
             </Button>
           </div>
         </div>
 
-        {/* Caption */}
-        <div className="p-3 bg-muted/20">
-          <p className="text-xs text-muted-foreground leading-relaxed italic">
-            {data.caption}
-          </p>
-        </div>
+        {data.caption && (
+          <div className="p-3 bg-sb-surface/20">
+            <p className="text-xs text-sb-muted leading-relaxed italic">
+              {data.caption}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -6,7 +6,7 @@ import { persist } from 'zustand/middleware';
 // ─── Type Definitions ────────────────────────────────────────────────
 
 export type AppMode = 'read' | 'annotate' | 'developer';
-export type GlobalPenTool = 'pen' | 'highlight-text' | 'highlight-free' | 'sticky' | 'eraser';
+export type GlobalPenTool = 'pen' | 'highlight-text' | 'highlight-free' | 'sticky' | 'eraser' | 'pan';
 export type ViewPanel = 'home' | 'notes' | 'library' | 'connectome' | 'ddx' | 'mindmap' | 'pdf-workspace';
 
 export interface StickyNote {
@@ -63,6 +63,7 @@ export interface NoteData {
   icd10Codes: string[];
   snomedCodes: string[];
   tags: string[];
+  folder?: string;
   sections: NoteSection[];
   highYieldSummary: string[];
   links: { targetId: string; relation: string; label: string }[];
@@ -102,6 +103,7 @@ export interface AppSettings {
   connectomeSync: boolean;
   fontSize: number;
   theme: 'dark' | 'light';
+  annotationToolbarPosition: 'top' | 'bottom' | 'left' | 'right';
 }
 
 // ─── Note-specific annotation sets ───────────────────────────────────
@@ -139,6 +141,13 @@ interface NoteToolState {
   duplicateNote: (id: string) => void;
   activeNoteId: string;
   setActiveNoteId: (id: string) => void;
+  
+  // ─── Folders ───────────────────────────────────────────────────────
+  folders: string[];
+  addFolder: (name: string) => void;
+  renameFolder: (oldName: string, newName: string) => void;
+  deleteFolder: (name: string, deleteNotes?: boolean) => void;
+  moveNoteToFolder: (noteId: string, folderName: string) => void;
 
   // ─── Per-note section CRUD ─────────────────────────────────────────
   addSectionToNote: (noteId: string, section: NoteSection) => void;
@@ -193,8 +202,8 @@ interface NoteToolState {
   // ─── Global Pen Overlay State ──────────────────────────────────────
   globalPenActive: boolean;
   setGlobalPenActive: (active: boolean) => void;
-  globalPenTool: 'pen' | 'highlight-text' | 'highlight-free' | 'sticky' | 'eraser' | null;
-  setGlobalPenTool: (tool: 'pen' | 'highlight-text' | 'highlight-free' | 'sticky' | 'eraser' | null) => void;
+  globalPenTool: GlobalPenTool | null;
+  setGlobalPenTool: (tool: GlobalPenTool | null) => void;
   highlightColor: string;
   setHighlightColor: (color: string) => void;
   drawingColor: string;
@@ -335,6 +344,23 @@ export const useNoteToolStore = create<NoteToolState>()(
         }));
       },
 
+      // ─── Folders ───────────────────────────────────────────────────
+      folders: ['Cardiology', 'Surgery', 'Nephrology', 'Emergency'],
+      addFolder: (name) => set((s) => ({ folders: [...new Set([...s.folders, name])] })),
+      renameFolder: (oldName, newName) => set((s) => ({
+        folders: s.folders.map(f => f === oldName ? newName : f),
+        notes: s.notes.map(n => n.folder === oldName ? { ...n, folder: newName } : n)
+      })),
+      deleteFolder: (name, deleteNotes = false) => set((s) => ({
+        folders: s.folders.filter(f => f !== name),
+        notes: deleteNotes 
+          ? s.notes.filter(n => n.folder !== name)
+          : s.notes.map(n => n.folder === name ? { ...n, folder: '' } : n)
+      })),
+      moveNoteToFolder: (noteId, folderName) => set((s) => ({
+        notes: s.notes.map(n => n.id === noteId ? { ...n, folder: folderName } : n)
+      })),
+
       // ─── Per-note section CRUD ───────────────────────────────────
       addSectionToNote: (noteId, section) =>
         set((s) => ({
@@ -387,6 +413,7 @@ export const useNoteToolStore = create<NoteToolState>()(
         connectomeSync: true,
         fontSize: 15,
         theme: 'dark' as const,
+        annotationToolbarPosition: 'right' as const,
       },
       updateSettings: (updates) =>
         set((s) => ({ settings: { ...s.settings, ...updates } })),
@@ -448,7 +475,7 @@ export const useNoteToolStore = create<NoteToolState>()(
       // ─── Global Pen Overlay ────────────────────────────────────────
       globalPenActive: false,
       setGlobalPenActive: (active) => set({ globalPenActive: active }),
-      globalPenTool: 'pen' as GlobalPenTool,
+      globalPenTool: 'pan' as GlobalPenTool,
       setGlobalPenTool: (tool) => set({ globalPenTool: tool }),
       highlightColor: 'var(--color-sb-accent)',
       setHighlightColor: (color) => set({ highlightColor: color }),
@@ -555,6 +582,7 @@ export const useNoteToolStore = create<NoteToolState>()(
       name: 'notetool-storage-v2', // bumped version to clear stale dynamicSections
       partialize: (state) => ({
         notes: state.notes,
+        folders: state.folders,
         userProfile: state.userProfile,
         settings: state.settings,
         activeNoteId: state.activeNoteId,

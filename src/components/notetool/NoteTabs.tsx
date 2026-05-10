@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface TabData {
   tabs: { id: string; label: string; content: string }[];
@@ -30,10 +30,8 @@ export function NoteTabs({ data }: NoteTabsProps) {
       </TabsList>
 
       {data.tabs.map((tab) => (
-        <TabsContent key={tab.id} value={tab.id} className="mt-4">
-          <div className="prose prose-sm prose-invert max-w-none text-foreground/90">
-            <ReactMarkdown>{tab.content}</ReactMarkdown>
-          </div>
+        <TabsContent key={tab.id} value={tab.id} className="mt-4 outline-none">
+          <MarkdownRenderer content={tab.content} />
         </TabsContent>
       ))}
     </Tabs>

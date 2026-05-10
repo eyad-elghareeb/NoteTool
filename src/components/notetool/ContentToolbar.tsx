@@ -44,9 +44,11 @@ import {
 import { cn } from '@/lib/utils';
 import { useNoteToolStore, type NoteSection } from '@/stores/notetool-store';
 import { MermaidMakerGUI } from './MermaidMakerGUI';
+import { useToast } from '@/hooks/use-toast';
 
 export function ContentToolbar() {
   const { activeNoteId, addSectionToNote } = useNoteToolStore();
+  const { toast } = useToast();
   const [openDialog, setOpenDialog] = useState<string | null>(null);
 
   const generateId = () => `dyn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -184,7 +186,7 @@ export function ContentToolbar() {
 
   const handleAddAsset = () => {
     const finalUrl = assetPreview || assetUrl;
-    if (!finalUrl) return;
+    if (!finalUrl || !activeNoteId) return;
 
     const section: NoteSection = {
       id: generateId(),
@@ -194,11 +196,20 @@ export function ContentToolbar() {
         id: generateId(),
         type: assetType,
         url: finalUrl,
-        caption: assetTitle,
+        caption: assetTitle || 'Clinical Asset',
+        noteId: activeNoteId,
+        filename: assetTitle || 'asset',
       },
       dynamic: true,
     };
     addSectionToNote(activeNoteId, section);
+    
+    // Feedback
+    toast({
+      title: "Asset Added",
+      description: `Successfully added ${assetType} to your synthesis.`,
+    });
+
     setAssetTitle(''); setAssetUrl(''); setAssetPreview(null); setOpenDialog(null);
   };
 
@@ -212,15 +223,26 @@ export function ContentToolbar() {
   };
 
   const handleAddPdf = () => {
-    if (!pdfDataUrl) return;
+    if (!pdfDataUrl || !activeNoteId) return;
     const section: NoteSection = {
       id: generateId(),
       type: 'pdf-embed',
       title: pdfFilename || 'Embedded PDF',
-      content: { dataUrl: pdfDataUrl, filename: pdfFilename },
+      content: { 
+        dataUrl: pdfDataUrl, 
+        filename: pdfFilename,
+        noteId: activeNoteId,
+      },
       dynamic: true,
     };
     addSectionToNote(activeNoteId, section);
+    
+    // Feedback
+    toast({
+      title: "PDF Embedded",
+      description: `"${pdfFilename}" has been persisted with this note.`,
+    });
+
     setPdfDataUrl(null); setPdfFilename(''); setOpenDialog(null);
   };
 
@@ -299,23 +321,22 @@ export function ContentToolbar() {
             <DialogContent className="!max-w-[95vw] !w-[95vw] h-[90vh] p-0 overflow-hidden bg-sb-surface border-sb-border flex flex-col shadow-2xl">
               <DialogTitle className="sr-only">Visual Mermaid Maker</DialogTitle>
               <MermaidMakerGUI 
-                onSave={(html) => {
-                  // The GUI returns a full HTML block with <pre class="mermaid">
-                  // We need to extract the code and title if we want to store it as a 'mermaid' section type
-                  // or just store it as a 'content' section.
-                  // For consistency with existing MermaidDiagram component, let's parse the code.
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(html, 'text/html');
-                  const code = doc.querySelector('pre.mermaid')?.textContent || '';
-                  
+                onSave={(data) => {
+                  if (!activeNoteId) return;
                   const section: NoteSection = {
                     id: generateId(),
                     type: 'mermaid',
-                    title: 'Flowchart',
-                    content: { id: generateId(), title: 'Flowchart', code: code.trim() },
+                    title: data.title || 'Flowchart',
+                    content: { id: generateId(), title: data.title || 'Flowchart', code: data.code.trim() },
                     dynamic: true,
                   };
                   addSectionToNote(activeNoteId, section);
+                  
+                  toast({
+                    title: "Diagram Added",
+                    description: "Your clinical algorithm has been inserted into the synthesis.",
+                  });
+                  
                   setOpenDialog(null);
                 }} 
                 onCancel={() => setOpenDialog(null)} 

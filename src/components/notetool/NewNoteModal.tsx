@@ -50,6 +50,7 @@ export function NewNoteModal() {
   const [specialty, setSpecialty] = useState('Cardiology');
   const [tags, setTags] = useState('');
   const [content, setContent] = useState('');
+  const [folder, setFolder] = useState('');
 
   const handleCreate = () => {
     if (!title.trim()) return;
@@ -63,6 +64,7 @@ export function NewNoteModal() {
       summary: content.trim() || `New synthesis: ${title.trim()}`,
       icd10Codes: [],
       snomedCodes: [],
+      folder: folder.trim() || 'Uncategorized',
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
       sections: content.trim()
         ? [{
@@ -87,6 +89,7 @@ export function NewNoteModal() {
     setSpecialty('Cardiology');
     setTags('');
     setContent('');
+    setFolder('');
     setNewNoteModalOpen(false);
   };
 
@@ -130,14 +133,25 @@ export function NewNoteModal() {
           </div>
 
           {/* Tags */}
-          <div className="space-y-2">
-            <Label className="text-sb-muted text-xs">Tags (comma separated)</Label>
-            <Input
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g., emergency, pharmacology, acute-care"
-              className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
-            />
+          <div className="flex gap-4">
+            <div className="flex-1 space-y-2">
+              <Label className="text-sb-muted text-xs">Folder</Label>
+              <Input
+                value={folder}
+                onChange={(e) => setFolder(e.target.value)}
+                placeholder="e.g., Cardiology, Exams"
+                className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
+              />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label className="text-sb-muted text-xs">Tags (comma separated)</Label>
+              <Input
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="e.g., emergency, pharma"
+                className="bg-sb-bg border-sb-border text-sb-text rounded-xl placeholder:text-sb-muted/50"
+              />
+            </div>
           </div>
 
           {/* Initial Content */}

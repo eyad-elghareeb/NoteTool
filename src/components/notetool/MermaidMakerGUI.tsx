@@ -27,12 +27,13 @@ interface Edge {
 }
 
 interface MermaidMakerGUIProps {
-  onSave: (mermaidHtml: string) => void;
+  onSave: (data: { code: string; title: string }) => void;
   onCancel: () => void;
   initialCode?: string;
+  initialTitle?: string;
 }
 
-export function MermaidMakerGUI({ onSave, onCancel, initialCode }: MermaidMakerGUIProps) {
+export function MermaidMakerGUI({ onSave, onCancel, initialCode, initialTitle }: MermaidMakerGUIProps) {
   const [nodes, setNodes] = useState<Node[]>([
     { id: 'A', label: 'Start', shape: 'rectangle' },
     { id: 'B', label: 'End', shape: 'rectangle' },
@@ -40,6 +41,7 @@ export function MermaidMakerGUI({ onSave, onCancel, initialCode }: MermaidMakerG
   const [edges, setEdges] = useState<Edge[]>([
     { id: 'e1', source: 'A', target: 'B', label: '' },
   ]);
+  const [title, setTitle] = useState(initialTitle || 'Clinical Algorithm');
 
   const [newNodeLabel, setNewNodeLabel] = useState('');
   const [newNodeShape, setNewNodeShape] = useState<Node['shape']>('rectangle');
@@ -95,17 +97,11 @@ export function MermaidMakerGUI({ onSave, onCancel, initialCode }: MermaidMakerG
   };
 
   const handleSave = () => {
-    const htmlBlock = `<div class="mermaid-diagram" style="background: var(--color-sb-surface2); border: 1px solid var(--color-sb-accent); border-radius: 12px; padding: 16px; margin: 12px 0;">
-  <p style="color: var(--color-sb-accent); font-weight: 600; margin-bottom: 8px;">Clinical Algorithm</p>
-  <pre class="mermaid">
-${generatedCode}
-  </pre>
-</div>`;
-    onSave(htmlBlock);
+    onSave({ code: generatedCode, title });
   };
 
   return (
-    <div className="flex flex-col h-[85vh] w-[90vw] max-w-6xl bg-sb-bg border border-sb-border rounded-xl overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full w-full bg-sb-bg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-sb-surface border-b border-sb-border">
         <div className="flex items-center gap-2">

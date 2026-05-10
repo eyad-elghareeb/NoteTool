@@ -160,6 +160,36 @@ export function SettingsModal() {
             </div>
           </div>
 
+          {/* ─── Annotation Preferences ───────────────────────────── */}
+          <div className="space-y-4">
+            <span className="label-uppercase" style={{ color: 'var(--color-sb-muted)' }}>
+              Annotation Preferences
+            </span>
+            <div
+              className="flex items-center justify-between rounded-xl p-3 border"
+              style={{ background: 'var(--color-sb-bg)', borderColor: 'var(--color-sb-border)' }}
+            >
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium" style={{ color: 'var(--color-sb-text)' }}>
+                  Toolbar Position
+                </Label>
+                <p className="text-[10px]" style={{ color: 'var(--color-sb-muted)' }}>
+                  Dock the annotation toolbar to a screen edge
+                </p>
+              </div>
+              <select 
+                value={settings.annotationToolbarPosition}
+                onChange={(e) => updateSettings({ annotationToolbarPosition: e.target.value as any })}
+                className="bg-sb-surface border border-sb-border text-sb-text text-xs rounded-lg p-1.5 outline-none focus:ring-1 focus:ring-sb-accent/50 transition-colors"
+              >
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+          </div>
+
           <Separator style={{ background: 'var(--color-sb-border)' }} />
 
           {/* ─── Clinical Engine Info ─────────────────────────────── */}

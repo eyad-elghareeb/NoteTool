@@ -157,13 +157,14 @@ export function MermaidDiagram({ id, title, code, isFullScreen = false }: Mermai
               minScale={0.2}
               maxScale={5}
               centerOnInit
+              wheel={{ disabled: true }}
             >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
-                  <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
-                    <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full shadow-lg" onClick={() => zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full shadow-lg" onClick={() => zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full shadow-lg" onClick={() => resetTransform()}><RotateCcw className="h-4 w-4" /></Button>
+                  <div className="absolute right-4 bottom-4 z-20 flex flex-col gap-2 scale-90 sm:scale-100">
+                    <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full shadow-xl bg-sb-surface2/80 backdrop-blur-md border border-sb-border/50 hover:bg-sb-accent/20" onClick={() => zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full shadow-xl bg-sb-surface2/80 backdrop-blur-md border border-sb-border/50 hover:bg-sb-accent/20" onClick={() => zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full shadow-xl bg-sb-surface2/80 backdrop-blur-md border border-sb-border/50 hover:bg-sb-accent/20" onClick={() => resetTransform()}><RotateCcw className="h-4 w-4" /></Button>
                   </div>
                   
                   <TransformComponent
