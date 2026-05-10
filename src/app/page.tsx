@@ -65,6 +65,9 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { MarkdownRenderer } from '@/components/notetool/MarkdownRenderer';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -159,7 +162,55 @@ export default function Home() {
 
   // ─── Simple markdown-to-HTML converter for export ---
   const mdToHtml = (md: string): string => {
-    return md
+    // ── GFM pipe-table parser (must run BEFORE other replacements) ──
+    const convertTables = (text: string): string => {
+      const tableRegex = /(^|\n)(\|[^\n]+\|\n\|[\s:|-]+\|\n(?:\|[^\n]+\|\n)*)/g;
+      return text.replace(tableRegex, (_match, prefix: string, tableBlock: string) => {
+        const rows = tableBlock.trim().split('\n');
+        if (rows.length < 2) return _match;
+
+        const parseCells = (row: string) =>
+          row.split('|').slice(1, -1).map(c => c.trim());
+
+        const headerCells = parseCells(rows[0]);
+        const sepCells = parseCells(rows[1]);
+        const alignments = sepCells.map(cell => {
+          const c = cell.trim();
+          if (c.startsWith(':') && c.endsWith(':')) return 'center';
+          if (c.endsWith(':')) return 'right';
+          return 'left';
+        });
+
+        let html = '<table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:0.9em;">';
+        html += '<thead><tr style="background:rgba(240,165,0,0.12);border-bottom:2px solid rgba(240,165,0,0.4);">';
+        headerCells.forEach((cell, i) => {
+          const a = alignments[i] || 'left';
+          html += `<th style="padding:8px 12px;text-align:${a};font-weight:600;font-size:0.85em;text-transform:uppercase;letter-spacing:0.05em;color:#f0a500;">${cell}</th>`;
+        });
+        html += '</tr></thead>';
+
+        if (rows.length > 2) {
+          html += '<tbody>';
+          for (let r = 2; r < rows.length; r++) {
+            const cells = parseCells(rows[r]);
+            const bg = r % 2 === 0 ? 'rgba(28,35,48,0.5)' : 'transparent';
+            html += `<tr style="border-bottom:1px solid rgba(48,54,61,0.6);background:${bg};">`;
+            cells.forEach((cell, i) => {
+              const a = alignments[i] || 'left';
+              html += `<td style="padding:8px 12px;text-align:${a};">${cell}</td>`;
+            });
+            html += '</tr>';
+          }
+          html += '</tbody>';
+        }
+        html += '</table>';
+        return prefix + html;
+      });
+    };
+
+    const withTables = convertTables(md);
+
+    return withTables
       // Code blocks (fenced) — preserve mermaid blocks for special handling
       .replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang: string, code: string) => {
         if (lang === 'mermaid') {
@@ -970,10 +1021,10 @@ export default function Home() {
               </div>
             ) : (
               <div
-                className="pl-3 prose prose-sm max-w-none"
-                style={{ fontSize: `${settings.fontSize}px`, color: 'var(--color-sb-text)' }}
+                className="pl-3"
+                style={{ fontSize: `${settings.fontSize}px` }}
               >
-                <ReactMarkdown>{typeof section.content === 'string' ? section.content : ''}</ReactMarkdown>
+                <MarkdownRenderer content={typeof section.content === 'string' ? section.content : ''} />
               </div>
             )}
             <div className="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

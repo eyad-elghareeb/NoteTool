@@ -15,7 +15,16 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   return (
-    <div className={cn("prose prose-sm sm:prose-base prose-invert max-w-none", className)}>
+    <div className={cn(
+      "prose prose-sm sm:prose-base prose-invert max-w-none",
+      // Table styling — borders, padding, and header backgrounds
+      "prose-table:border prose-table:border-sb-border prose-table:rounded-lg prose-table:overflow-hidden",
+      "prose-th:bg-sb-surface2 prose-th:p-2 prose-th:text-sb-text prose-th:font-semibold prose-th:text-xs prose-th:uppercase prose-th:tracking-wider",
+      "prose-td:p-2 prose-td:border prose-td:border-sb-border prose-td:text-sb-text",
+      "prose-tr:border-b prose-tr:border-sb-border",
+      "prose-thead:border-b-2 prose-thead:border-sb-accent/40",
+      className
+    )}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
