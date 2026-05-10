@@ -145,6 +145,528 @@ export default function Home() {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
+  // ─── Resolve CSS variable to actual color value ---
+  const resolveColor = (cssVar: string, fallback: string): string => {
+    if (typeof window === 'undefined') return fallback;
+    try {
+      const el = document.documentElement;
+      const computed = getComputedStyle(el).getPropertyValue(cssVar.replace(/^var\(--/, '').replace(/\)$/, ''));
+      return computed.trim() || fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  // ─── Simple markdown-to-HTML converter for export ---
+  const mdToHtml = (md: string): string => {
+    return md
+      // Code blocks (fenced) — preserve mermaid blocks for special handling
+      .replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang: string, code: string) => {
+        if (lang === 'mermaid') {
+          return `<div class="mermaid-inline">${code.trim()}</div>`;
+        }
+        return `<pre><code class="lang-${lang}">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+      })
+      // Bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Inline code
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Headings
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      // Unordered lists
+      .replace(/^\- (.+)$/gm, '<li>$1</li>')
+      .replace(/^\* (.+)$/gm, '<li>$1</li>')
+      // Ordered lists
+      .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+      // Horizontal rules
+      .replace(/^---$/gm, '<hr>')
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      // Line breaks → paragraphs (wrap loose text)
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+  };
+
+  // ─── Check if any section contains mermaid diagrams ---
+  const hasMermaidSections = (sections: NoteSection[]): boolean => {
+    return sections.some(s => s.type === 'mermaid' || s.type === 'algorithm');
+  };
+
+  // ─── Check if any section contains images ---
+  const hasImageSections = (sections: NoteSection[]): boolean => {
+    return sections.some(s => {
+      if (s.type === 'asset') {
+        const asset = s.content as { type?: string } | null;
+        return asset?.type === 'image';
+      }
+      return false;
+    });
+  };
+
+  // ─── Render section content to HTML for export ---
+  const sectionToExportHtml = (section: NoteSection): string => {
+    const accent = isDark ? '#f0a500' : '#c27803';
+    const muted = isDark ? '#8b949e' : '#78716c';
+    const border = isDark ? '#30363d' : '#d0ccc5';
+    const surface2 = isDark ? '#1c2330' : '#f8f6f1';
+
+    switch (section.type) {
+      case 'content': {
+        const body = typeof section.content === 'string' ? mdToHtml(section.content) : '';
+        return `<section class="note-section">
+          <h2><span class="accent-bar"></span>${section.title || ''}</h2>
+          <div class="prose-body">${body}</div>
+        </section>`;
+      }
+      case 'mermaid':
+      case 'algorithm': {
+        const mermaidContent = section.content as { id?: string; title?: string; code?: string };
+        const code = mermaidContent?.code || '';
+        const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Render as a mermaid div — Mermaid.js CDN will render it when the page opens
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar"></span>${section.title}</h2>` : ''}
+          <div class="mermaid-diagram-block">
+            <div class="mermaid-diagram-label">Diagram: ${mermaidContent?.title || 'Flowchart'}</div>
+            <div class="mermaid">${escapedCode}</div>
+            <noscript>
+              <pre class="mermaid-code-fallback">${escapedCode}</pre>
+            </noscript>
+          </div>
+        </section>`;
+      }
+      case 'mcq': {
+        const mcq = section.content as { question?: string; options?: string[]; correctIndex?: number; explanation?: string };
+        const opts = (mcq.options || []).map((opt, i) =>
+          `<li class="${i === mcq.correctIndex ? 'correct-option' : ''}">${String.fromCharCode(65 + i)}) ${opt}</li>`
+        ).join('');
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar accent-violet"></span>${section.title}</h2>` : ''}
+          <div class="mcq-block">
+            <p class="mcq-question">${mcq.question || ''}</p>
+            <ul class="mcq-options">${opts}</ul>
+            ${mcq.explanation ? `<div class="mcq-explanation"><strong>Explanation:</strong> ${mcq.explanation}</div>` : ''}
+          </div>
+        </section>`;
+      }
+      case 'flashcard': {
+        const cards = Array.isArray(section.content) ? section.content : [];
+        const cardsHtml = cards.map((c: any) =>
+          `<div class="flashcard-item">
+            <div class="flashcard-front"><strong>Q:</strong> ${c.front || ''}</div>
+            <div class="flashcard-back"><strong>A:</strong> ${c.back || ''}</div>
+          </div>`
+        ).join('');
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar accent-violet"></span>${section.title}</h2>` : ''}
+          <div class="flashcard-list">${cardsHtml}</div>
+        </section>`;
+      }
+      case 'tabs': {
+        const tabData = section.content as { tabs?: { id?: string; label?: string; content?: string }[] };
+        const tabs = (tabData?.tabs || []).map((t, i) =>
+          `<div class="tab-item">
+            <div class="tab-label">${t.label || `Tab ${i + 1}`}</div>
+            <div class="tab-content">${typeof t.content === 'string' ? mdToHtml(t.content) : ''}</div>
+          </div>`
+        ).join('');
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar"></span>${section.title}</h2>` : ''}
+          <div class="tabs-block">${tabs}</div>
+        </section>`;
+      }
+      case 'asset': {
+        const asset = section.content as { id?: string; noteId?: string; filename?: string; type?: string; caption?: string; path?: string; url?: string; dataUrl?: string } | null;
+        if (!asset) return '';
+        const assetUrl = asset.dataUrl || asset.path || asset.url || '';
+        const caption = asset.caption || asset.filename || '';
+        if (asset.type === 'image' && assetUrl) {
+          return `<section class="note-section">
+            ${section.title ? `<h2><span class="accent-bar accent-orange"></span>${section.title}</h2>` : ''}
+            <figure class="image-block">
+              <img src="${assetUrl}" alt="${caption}" class="asset-image" />
+              ${caption ? `<figcaption>${caption}</figcaption>` : ''}
+            </figure>
+          </section>`;
+        }
+        if (asset.type === 'pdf' && assetUrl) {
+          return `<section class="note-section">
+            ${section.title ? `<h2><span class="accent-bar accent-orange"></span>${section.title}</h2>` : ''}
+            <div class="pdf-embed-block">
+              <div class="pdf-embed-header">${asset.filename || 'PDF Document'}</div>
+              <embed src="${assetUrl}" type="application/pdf" class="pdf-embed" />
+            </div>
+          </section>`;
+        }
+        // Fallback for other asset types
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar accent-orange"></span>${section.title}</h2>` : ''}
+          <div class="asset-block">
+            <div class="asset-label">${asset.type?.toUpperCase() || 'ASSET'}: ${asset.filename || ''}</div>
+            ${assetUrl ? `<a href="${assetUrl}" class="asset-download" download>Download ${asset.filename || 'file'}</a>` : ''}
+          </div>
+        </section>`;
+      }
+      case 'pdf-embed': {
+        const pdf = section.content as { dataUrl?: string; filename?: string } | null;
+        if (!pdf) return '';
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar accent-orange"></span>${section.title}</h2>` : ''}
+          <div class="pdf-embed-block">
+            <div class="pdf-embed-header">${pdf.filename || 'PDF Document'}</div>
+            ${pdf.dataUrl ? `<embed src="${pdf.dataUrl}" type="application/pdf" class="pdf-embed" />` : ''}
+          </div>
+        </section>`;
+      }
+      default: {
+        const body = typeof section.content === 'string' ? mdToHtml(section.content) : JSON.stringify(section.content);
+        return `<section class="note-section">
+          ${section.title ? `<h2><span class="accent-bar"></span>${section.title}</h2>` : ''}
+          <div class="prose-body">${body}</div>
+        </section>`;
+      }
+    }
+  };
+
+  // ─── Generate the full standalone HTML document for export ---
+  const generateExportHtml = (note: NoteData, forPrint: boolean = false): string => {
+    const bg = forPrint ? '#ffffff' : (isDark ? '#0d1117' : '#f3f0eb');
+    const surface = forPrint ? '#ffffff' : (isDark ? '#161b22' : '#ffffff');
+    const surface2 = forPrint ? '#f5f5f5' : (isDark ? '#1c2330' : '#f8f6f1');
+    const text = forPrint ? '#1c1917' : (isDark ? '#e6edf3' : '#1c1917');
+    const muted = forPrint ? '#666666' : (isDark ? '#8b949e' : '#78716c');
+    const accent = forPrint ? '#c27803' : (isDark ? '#f0a500' : '#c27803');
+    const border = forPrint ? '#d0d0d0' : (isDark ? '#30363d' : '#d0ccc5');
+    const correct = forPrint ? '#16a34a' : (isDark ? '#2ea043' : '#16a34a');
+    const blue = '#3b82f6';
+    const hasMermaid = hasMermaidSections(note.sections);
+
+    const sectionsHtml = note.sections.map(s => sectionToExportHtml(s)).join('\n');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${note.title}</title>
+  ${hasMermaid ? `<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>` : ''}
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: ${bg};
+      color: ${text};
+      line-height: 1.65;
+      letter-spacing: 0.01em;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+    .note-header { margin-bottom: 40px; border-bottom: 1px solid ${border}; padding-bottom: 24px; }
+    .note-header h1 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 2em;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: ${text};
+      margin-bottom: 8px;
+    }
+    .note-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .note-meta .specialty {
+      font-size: 13px;
+      color: ${accent};
+      background: ${surface2};
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    .note-meta .date { font-size: 12px; color: ${muted}; }
+    .note-section { margin-bottom: 36px; }
+    .note-section h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.15em;
+      font-weight: 700;
+      color: ${text};
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid ${border};
+    }
+    .accent-bar {
+      display: inline-block;
+      width: 4px;
+      height: 20px;
+      border-radius: 2px;
+      background: ${accent};
+      flex-shrink: 0;
+    }
+    .accent-bar.accent-violet { background: #a78bfa; }
+    .accent-bar.accent-orange { background: #fb923c; }
+    .prose-body {
+      padding-left: 12px;
+      font-size: 15px;
+    }
+    .prose-body p { margin-bottom: 12px; }
+    .prose-body strong { color: ${text}; font-weight: 600; }
+    .prose-body em { font-style: italic; }
+    .prose-body code {
+      background: ${surface2};
+      color: ${accent};
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.88em;
+    }
+    .prose-body pre {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+    .prose-body pre code {
+      background: none;
+      padding: 0;
+      color: ${text};
+    }
+    .prose-body ul, .prose-body ol {
+      padding-left: 24px;
+      margin-bottom: 12px;
+    }
+    .prose-body li { margin-bottom: 4px; }
+    .prose-body a { color: ${accent}; }
+    .prose-body hr { border: none; border-top: 1px solid ${border}; margin: 20px 0; }
+    .prose-body h1, .prose-body h2, .prose-body h3 { margin-top: 20px; margin-bottom: 8px; }
+    /* Inline mermaid diagrams within markdown content */
+    .mermaid-inline {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+    /* Mermaid diagram blocks */
+    .mermaid-diagram-block {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .mermaid-diagram-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: ${muted};
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .mermaid-diagram-block .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .mermaid-code-fallback {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12px;
+      color: ${blue};
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    /* Images */
+    .image-block {
+      margin: 0;
+    }
+    .image-block .asset-image {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid ${border};
+      display: block;
+    }
+    .image-block figcaption {
+      margin-top: 8px;
+      font-size: 13px;
+      color: ${muted};
+      text-align: center;
+    }
+    /* PDF embeds */
+    .pdf-embed-block {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .pdf-embed-header {
+      padding: 10px 16px;
+      font-size: 12px;
+      color: ${muted};
+      border-bottom: 1px solid ${border};
+      background: ${surface2};
+    }
+    .pdf-embed {
+      width: 100%;
+      height: 500px;
+      border: none;
+    }
+    /* Other assets */
+    .asset-block {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .asset-label {
+      font-size: 12px;
+      color: ${muted};
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .asset-download {
+      display: inline-block;
+      padding: 6px 14px;
+      background: ${surface2};
+      color: ${accent};
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .asset-download:hover { text-decoration: underline; }
+    .mcq-block {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .mcq-question {
+      font-size: 15px;
+      font-weight: 600;
+      color: ${text};
+      margin-bottom: 12px;
+    }
+    .mcq-options { list-style: none; padding: 0; margin-bottom: 12px; }
+    .mcq-options li {
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      border: 1px solid ${border};
+      font-size: 14px;
+    }
+    .mcq-options li.correct-option {
+      border-color: ${correct};
+      background: rgba(46, 160, 67, 0.1);
+      color: ${correct};
+    }
+    .mcq-explanation {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: ${surface2};
+      font-size: 13px;
+      color: ${muted};
+    }
+    .flashcard-list { display: grid; gap: 12px; }
+    .flashcard-item {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .flashcard-front {
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid ${border};
+    }
+    .flashcard-back {
+      padding: 14px 16px;
+      font-size: 14px;
+      background: ${surface2};
+      color: ${muted};
+    }
+    .tabs-block { display: grid; gap: 16px; }
+    .tab-item {
+      background: ${surface};
+      border: 1px solid ${border};
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .tab-label {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: ${accent};
+      border-bottom: 1px solid ${border};
+      background: ${surface2};
+    }
+    .tab-content {
+      padding: 16px;
+      font-size: 14px;
+    }
+    .tab-content p { margin-bottom: 8px; }
+    .export-footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid ${border};
+      font-size: 11px;
+      color: ${muted};
+      text-align: center;
+    }
+    @media print {
+      body { background: white !important; color: #1c1917 !important; padding: 20px; }
+      .note-section h2 { border-bottom-color: #d0ccc5; }
+      .mermaid-diagram-block, .mcq-block, .flashcard-item, .tab-item, .image-block, .pdf-embed-block { break-inside: avoid; }
+      .pdf-embed { display: none; }
+      .pdf-embed-header::after { content: ' (PDF — open HTML file to view)'; }
+      .export-footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="note-header">
+    <h1>${note.title}</h1>
+    <div class="note-meta">
+      <span class="specialty">${note.specialty}</span>
+      ${note.updatedAt ? `<span class="date">${new Date(note.updatedAt).toLocaleDateString()}</span>` : ''}
+    </div>
+  </div>
+  ${sectionsHtml}
+  <div class="export-footer">
+    Exported from NoteTool — ${new Date().toLocaleDateString()}
+  </div>
+  ${hasMermaid ? `<script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: '${isDark ? 'dark' : 'default'}',
+      themeVariables: {
+        primaryColor: '${isDark ? '#1e3a5f' : '#dbeafe'}',
+        primaryTextColor: '${isDark ? '#e2e8f0' : '#1e293b'}',
+        primaryBorderColor: '${isDark ? '#2563eb' : '#3b82f6'}',
+        lineColor: '${isDark ? '#64748b' : '#94a3b8'}',
+        fontSize: '14px',
+        ${isDark ? "mainBkg: '#1e3a5f'," : "mainBkg: '#dbeafe',"}
+        edgeLabelBackground: 'transparent',
+      },
+      flowchart: { curve: 'basis', htmlLabels: false, padding: 20 }
+    });
+  </script>` : ''}
+</body>
+</html>`;
+  };
+
   const handleExport = (format: 'json' | 'html') => {
     const note = activeNote;
     if (!note) return;
@@ -158,13 +680,7 @@ export default function Home() {
       filename = `${note.id}.json`;
       mimeType = 'application/json';
     } else {
-      const sectionsHtml = note.sections
-        .map(
-          (s) =>
-            `<section><h2>${s.title}</h2><div>${typeof s.content === 'string' ? s.content : JSON.stringify(s.content)}</div></section>`
-        )
-        .join('\n');
-      content = `<!DOCTYPE html><html><head><title>${note.title}</title><style>body{font-family:system-ui;max-width:800px;margin:40px auto;padding:0 20px;color:var(--color-sb-text);background:var(--color-sb-bg);}h1{font-family:Georgia,serif;}h2{color:var(--color-sb-accent);}</style></head><body><h1>${note.title}</h1><p><em>${note.specialty}</em></p>${sectionsHtml}</body></html>`;
+      content = generateExportHtml(note, false);
       filename = `${note.id}.html`;
       mimeType = 'text/html';
     }
@@ -179,43 +695,34 @@ export default function Home() {
     setExportDropdownOpen(false);
   };
 
-  // ─── Export PDF — capture live rendered DOM ---
+  // ─── Export PDF — open HTML in new window and print ---
   const handleExportPDF = async () => {
     const note = activeNote;
     if (!note) return;
-    const bgColor = isDark ? 'var(--color-sb-bg)' : '#f3f0eb';
-    // Capture the live rendered DOM — includes all section types
-    const printRoot = document.getElementById('note-print-root') ?? document.body;
     try {
-      const html2canvas = (await import('html2canvas-pro')).default;
-      const canvas = await html2canvas(printRoot, {
-        backgroundColor: bgColor,
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const jsPDF = (await import('jspdf')).default;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
-      let yPos = 0;
-      let remaining = imgH;
-      let first = true;
-      while (remaining > 0) {
-        if (!first) pdf.addPage();
-        first = false;
-        const sliceH = Math.min(remaining, pageH);
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = Math.round((sliceH * canvas.width) / pageW);
-        const ctx = sliceCanvas.getContext('2d');
-        ctx?.drawImage(canvas, 0, Math.round((yPos * canvas.width) / pageW), canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
-        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, sliceH);
-        yPos += sliceH;
-        remaining -= sliceH;
+      const html = generateExportHtml(note, true);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          // Wait for Mermaid to render (if any) then auto-print
+          const hasMermaid = hasMermaidSections(note.sections);
+          const delay = hasMermaid ? 2000 : 300;
+          setTimeout(() => {
+            printWindow.print();
+            // Revoke after a delay so the window can fully load
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+          }, delay);
+        };
+      } else {
+        // Fallback: if popup blocked, download HTML and tell user
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${note.id}-print.html`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
       }
-      pdf.save(`${note.id}.pdf`);
     } catch (err) {
       console.error('PDF export error:', err);
     }
@@ -1197,8 +1704,7 @@ export default function Home() {
               <div className="relative min-h-full">
                 <div
                   className={cn(
-                    'max-w-5xl mx-auto p-6',
-                    mode === 'read' && 'max-w-4xl'
+                    'max-w-5xl mx-auto p-6'
                   )}
                 >
             {/* View label for non-notes views */}

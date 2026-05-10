@@ -360,11 +360,62 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   Mermaid Diagram Overrides
+   Mermaid Diagram — Medical Reference Card Theme
    ──────────────────────────────────────────────────────────────── */
 
 .mermaid svg {
-  max-width: 100%;
+  max-width: none;
+}
+
+.mermaid-container svg {
+  max-width: none;
+  height: auto;
+}
+
+/* Medical-blue node styling in rendered SVGs */
+.mermaid-container .node rect,
+.mermaid-container .node circle,
+.mermaid-container .node polygon {
+  rx: 8;
+  ry: 8;
+}
+
+.mermaid-container .edgeLabel {
+  font-size: 11px;
+  padding: 2px 6px;
+  background-color: transparent !important;
+}
+
+/* Fix black boxes on arrow labels — force edge label backgrounds transparent */
+.mermaid-container .edgeLabel rect,
+.mermaid-container .edgeLabel .label-container,
+.mermaid-container .edgeLabel foreignObject > div {
+  fill: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Ensure arrowhead markers render correctly */
+.mermaid-container defs marker path {
+  fill: var(--sb-muted) !important;
+}
+
+/* Remove stray rect backgrounds from edge labels */
+.mermaid-container .edgeLabel rect {
+  stroke: none !important;
+  fill: transparent !important;
+}
+
+/* Subtle hover on nodes for interactivity feel */
+.mermaid-container .node:hover rect,
+.mermaid-container .node:hover circle,
+.mermaid-container .node:hover polygon {
+  filter: brightness(1.1);
+  transition: filter 0.15s ease;
+}
+
+/* Viewport inner glow on focus */
+.mermaid-viewport:focus-within {
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);
 }
 
 /* ────────────────────────────────────────────────────────────────

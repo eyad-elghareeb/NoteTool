@@ -26,7 +26,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
             
             if (!inline && lang === 'mermaid') {
               return (
-                <div className="my-4 overflow-hidden rounded-xl border border-sb-border bg-sb-surface">
+                <div className="my-6">
                   <MermaidDiagram 
                     id={`mermaid-${Math.random().toString(36).substr(2, 9)}`}
                     title="Diagram"

@@ -40,6 +40,7 @@ import {
   X,
   Eye,
   AlertCircle,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNoteToolStore, type NoteSection } from '@/stores/notetool-store';
@@ -250,7 +251,7 @@ export function ContentToolbar() {
     { id: 'section', label: 'Add Section', icon: <FileText className="h-4 w-4" />, color: 'text-teal-400', bgColor: 'bg-teal-600/10', borderColor: 'border-teal-600/30' },
     { id: 'mcq', label: 'Add MCQ', icon: <HelpCircle className="h-4 w-4" />, color: 'text-sb-accent', bgColor: 'bg-sb-accent/10', borderColor: 'border-sb-accent/30' },
     { id: 'flashcard', label: 'Add Flashcard', icon: <Layers className="h-4 w-4" />, color: 'text-violet-400', bgColor: 'bg-violet-600/10', borderColor: 'border-violet-600/30' },
-    { id: 'mermaid', label: 'Mermaid Maker', icon: <GitBranch className="h-4 w-4" />, color: 'text-cyan-400', bgColor: 'bg-cyan-600/10', borderColor: 'border-cyan-600/30' },
+    { id: 'mermaid', label: 'Diagram Builder', icon: <Activity className="h-4 w-4" />, color: 'text-blue-400', bgColor: 'bg-blue-600/10', borderColor: 'border-blue-600/30' },
     { id: 'tabs', label: 'Add Tab Group', icon: <Columns3 className="h-4 w-4" />, color: 'text-rose-400', bgColor: 'bg-rose-600/10', borderColor: 'border-rose-600/30' },
     { id: 'asset', label: 'Add Asset', icon: <ImagePlus className="h-4 w-4" />, color: 'text-emerald-400', bgColor: 'bg-emerald-600/10', borderColor: 'border-emerald-600/30' },
     { id: 'pdf', label: 'Embed PDF', icon: <FileUp className="h-4 w-4" />, color: 'text-orange-400', bgColor: 'bg-orange-600/10', borderColor: 'border-orange-600/30' },
@@ -318,7 +319,7 @@ export function ContentToolbar() {
 
           {/* MERMAID LIVE MAKER */}
           {tool.id === 'mermaid' && (
-            <DialogContent className="!max-w-[95vw] !w-[95vw] h-[90vh] p-0 overflow-hidden bg-sb-surface border-sb-border flex flex-col shadow-2xl">
+            <DialogContent className="!max-w-[95vw] !w-[95vw] h-[90vh] p-0 overflow-hidden bg-sb-surface border-sb-border flex flex-col shadow-2xl" showCloseButton={false}>
               <DialogTitle className="sr-only">Visual Mermaid Maker</DialogTitle>
               <MermaidMakerGUI 
                 onSave={(data) => {

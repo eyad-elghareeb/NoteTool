@@ -26,6 +26,7 @@ import {
   HelpCircle,
   Layers,
   GitBranch,
+  Activity,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { MermaidMakerGUI } from './MermaidMakerGUI';
@@ -171,17 +172,17 @@ Content for management tab...
   },
   {
     id: 'mermaid',
-    label: 'Mermaid',
-    icon: <GitBranch className="h-3.5 w-3.5" />,
+    label: 'Diagram',
+    icon: <Activity className="h-3.5 w-3.5" />,
     type: 'insert',
-    template: `<div class="mermaid-diagram" style="background: var(--color-sb-surface2); border: 1px solid #22d3ee; border-radius: 12px; padding: 16px; margin: 12px 0;">
-  <p style="color: #22d3ee; font-weight: 600; margin-bottom: 8px;">Mermaid Diagram</p>
+    template: `<div class="mermaid-diagram" style="background: var(--color-sb-surface2); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 16px; margin: 12px 0;">
+  <p style="color: #3b82f6; font-weight: 600; margin-bottom: 8px;">Clinical Diagram</p>
   <pre class="mermaid" style="background: var(--color-sb-bg); border-radius: 8px; padding: 12px; color: var(--color-sb-muted);">
 graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Action 1]
-    B -->|No| D[Action 2]
-    C --> E[End]
+    A["Patient Presentation"] --> B{"Assessment"}
+    B -->|"Positive"| C["Intervention"]
+    B -->|"Negative"| D["Monitor"]
+    C --> E["Re-evaluate"]
     D --> E
   </pre>
 </div>`,

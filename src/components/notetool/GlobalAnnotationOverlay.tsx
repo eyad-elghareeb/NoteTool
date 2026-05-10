@@ -340,10 +340,13 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
 
   const showToolbar = mode === 'annotate' && globalPenActive;
 
+  const showStylingBar = (globalPenTool === 'pen' || globalPenTool === 'highlight-free') && stylingBarOpen;
+
   const toolbarClasses = cn(
     "fixed z-[100] p-2 bg-sb-bg/95 backdrop-blur-3xl border border-sb-border/80 shadow-2xl shadow-black/80 transition-all duration-300 ease-in-out",
     isLandscape
-      ? "flex-row items-center h-14 w-fit rounded-full px-4"
+      ? cn("flex-col items-center gap-1.5 max-w-[calc(100vw-3rem)] rounded-2xl px-3",
+           showStylingBar ? "py-2" : "py-1.5")
       : "flex-col w-14 h-fit rounded-2xl py-4",
     toolbarPos === 'right' && "right-6 top-1/2 -translate-y-1/2",
     toolbarPos === 'left' && "left-6 top-1/2 -translate-y-1/2",
@@ -488,7 +491,9 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className={cn("flex gap-1 items-center", isLandscape ? "flex-row" : "flex-col")}>
+            {/* ─── Primary Row: Tools + Paintbrush + Trash (always visible) ─── */}
+            <div className={cn("flex items-center gap-1", isLandscape ? "flex-row" : "flex-col")}>
+              {/* Tool buttons */}
               {[
                 { id: 'pan', icon: Hand, label: 'Pan' },
                 { id: 'pen', icon: Pencil, label: 'Pen' },
@@ -508,32 +513,71 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
                   <tool.icon className="h-4 w-4" />
                 </button>
               ))}
+
+              {/* Paintbrush toggle */}
+              {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && (
+                <>
+                  <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-6 mx-0.5" : "w-6 h-px my-1 mx-auto")} />
+                  <button onClick={() => setStylingBarOpen(!stylingBarOpen)}
+                    className={cn("p-2 rounded-xl transition-all shrink-0", stylingBarOpen ? "bg-sb-surface2 text-sb-accent" : "text-sb-muted hover:text-sb-text")}
+                    title="Color & Size"
+                  >
+                    <Paintbrush className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+
+              {/* Trash / Clear All */}
+              <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-6 mx-0.5" : "w-6 h-px my-1 mx-auto")} />
+              <button onClick={clearAllAnnotations} className="p-2 text-sb-wrong hover:bg-sb-wrong/10 rounded-xl shrink-0">
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
 
-            {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && stylingBarOpen && (
-              <div className={cn("flex items-center", isLandscape ? "flex-row gap-1.5 mr-2" : "flex-col gap-1")}>
-                {/* Brush: -, circle, + */}
-                <div className={cn("flex items-center gap-0.5", isLandscape ? "flex-row" : "flex-col")}>
-                  <button onClick={() => setDrawingBrushSize(Math.max(2, drawingBrushSize - 2))} className="p-0.5 rounded text-sb-muted hover:text-sb-text">
+            {/* ─── Secondary Row: Styling bar (brush size + colors) ─── */}
+            {showStylingBar && (
+              <div className={cn(
+                "flex items-center pt-1.5 border-t border-sb-border/40",
+                isLandscape ? "flex-row gap-1.5" : "flex-col gap-1"
+              )}>
+                {/* Brush size: −, preview dot, + */}
+                <div className={cn("flex items-center gap-1", isLandscape ? "flex-row" : "flex-col")}>
+                  <button onClick={() => setDrawingBrushSize(Math.max(2, drawingBrushSize - 2))} className="p-1 rounded text-sb-muted hover:text-sb-text">
                     <Minus className="h-3 w-3" />
                   </button>
-                  <div className="flex items-center justify-center shrink-0" style={{ width: 20, height: 20 }}>
+                  <div
+                    className="flex items-center justify-center shrink-0 transition-all"
+                    style={{
+                      width: globalPenTool === 'pen'
+                        ? Math.max(22, drawingBrushSize + 6)
+                        : 30,
+                      height: globalPenTool === 'pen'
+                        ? Math.max(22, drawingBrushSize + 6)
+                        : 30,
+                    }}
+                  >
+                    {/* 1:1 preview — pen dot matches actual strokeWidth; highlight scales proportionally */}
                     <div className="rounded-full transition-all" style={{
-                      width: drawingBrushSize * 0.5,
-                      height: drawingBrushSize * 0.5,
+                      width: globalPenTool === 'pen'
+                        ? drawingBrushSize
+                        : Math.min(freeHighlightWidth(drawingBrushSize) / 4.5, 26),
+                      height: globalPenTool === 'pen'
+                        ? drawingBrushSize
+                        : Math.min(freeHighlightWidth(drawingBrushSize) / 4.5, 26),
                       backgroundColor: globalPenTool === 'pen' ? drawingColor : highlightColor,
+                      opacity: globalPenTool === 'pen' ? 1 : 0.5,
                     }} />
                   </div>
-                  <button onClick={() => setDrawingBrushSize(Math.min(40, drawingBrushSize + 2))} className="p-0.5 rounded text-sb-muted hover:text-sb-text">
+                  <button onClick={() => setDrawingBrushSize(Math.min(40, drawingBrushSize + 2))} className="p-1 rounded text-sb-muted hover:text-sb-text">
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
 
-                <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-6" : "w-6 h-px")} />
+                <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-5" : "w-5 h-px")} />
 
                 {/* Color swatches */}
-                <div className={cn("flex gap-1", isLandscape ? "flex-row" : "flex-col")}>
-                  {(globalPenTool === 'pen' ? PEN_COLORS : TEXT_HL_COLORS).slice(0, isLandscape ? 12 : 6).map((c) => (
+                <div className={cn("flex gap-0.5", isLandscape ? "flex-row" : "flex-col")}>
+                  {(globalPenTool === 'pen' ? PEN_COLORS : TEXT_HL_COLORS).slice(0, isLandscape ? 10 : 6).map((c) => (
                     <button key={c.id} onClick={() => globalPenTool === 'pen' ? setDrawingColor(c.color) : setHighlightColor(c.color)}
                       className={cn("w-3.5 h-3.5 rounded-full shrink-0",
                         (globalPenTool === 'pen' ? drawingColor : highlightColor) === c.color ? "ring-[1.5px] ring-white scale-110" : "opacity-50 hover:opacity-80"
@@ -552,21 +596,6 @@ export function GlobalAnnotationOverlay(): React.ReactNode {
                 </div>
               </div>
             )}
-
-            {(globalPenTool === 'pen' || globalPenTool === 'highlight-free') && (
-              <button onClick={() => setStylingBarOpen(!stylingBarOpen)}
-                className={cn("p-2 rounded-xl transition-all shrink-0", stylingBarOpen ? "bg-sb-surface2 text-sb-accent" : "text-sb-muted hover:text-sb-text")}
-                title="Color & Size"
-              >
-                <Paintbrush className="h-4 w-4" />
-              </button>
-            )}
-
-            <div className={cn("bg-sb-border/40 shrink-0", isLandscape ? "w-px h-8 mx-1.5" : "w-8 h-px my-1.5 mx-auto")} />
-
-            <button onClick={clearAllAnnotations} className="p-1.5 text-sb-wrong hover:bg-sb-wrong/10 rounded-lg">
-              <Trash2 className="h-4 w-4" />
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
