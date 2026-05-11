@@ -4,6 +4,9 @@
 .pnp.js
 .bun
 bun.lockb
+/electron
+/dist   
+/dist-electron
 
 # testing
 /coverage
@@ -50,3 +53,4 @@ next-env.d.ts
 .idea
 .swp
 .swo
+QWEN.md
