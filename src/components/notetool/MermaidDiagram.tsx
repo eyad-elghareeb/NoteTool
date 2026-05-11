@@ -347,7 +347,7 @@ export function MermaidDiagram({ id, title, code, isFullScreen = false, embedded
             maxScale={5}
             centerOnInit
             wheel={{ disabled: true }}
-            onTransformed={(ref: any) => {
+            onTransform={(ref: any) => {
               setZoomLevel(ref.state.scale);
             }}
           >
